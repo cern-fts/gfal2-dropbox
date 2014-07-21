@@ -32,6 +32,8 @@ typedef struct KeyValue KeyValue;
 
 int oauth_setup(gfal2_context_t context, OAuth* oauth, GError** error)
 {
+    g_assert(context != NULL && oauth != NULL && error != NULL);
+
     oauth->app_key = gfal2_get_opt_string(context, "DROPBOX", "APP_KEY", NULL);
     oauth->access_token = gfal2_get_opt_string(context, "DROPBOX", "ACCESS_TOKEN", NULL);
     oauth->app_secret = gfal2_get_opt_string(context, "DROPBOX", "APP_SECRET", NULL);
@@ -65,6 +67,8 @@ int oauth_setup(gfal2_context_t context, OAuth* oauth, GError** error)
 
 void oauth_release(OAuth* oauth)
 {
+    g_assert(oauth != NULL);
+
     g_free(oauth->app_key);
     g_free(oauth->access_token);
     g_free(oauth->app_secret);
@@ -77,6 +81,8 @@ void oauth_release(OAuth* oauth)
 static size_t oauth_populate_keyvalue_from_args(KeyValue* pairs, size_t start,
         size_t n_args, va_list args)
 {
+    g_assert(pairs != NULL);
+
     size_t n, i;
     for (n = 0, i = start; n < n_args; ++n, ++i) {
         pairs[i].key = va_arg(args, const char*);
@@ -89,6 +95,8 @@ static size_t oauth_populate_keyvalue_from_args(KeyValue* pairs, size_t start,
 static size_t oauth_populate_keyvalue_from_oauth(KeyValue* pairs,
         const OAuth* oauth, size_t start)
 {
+    g_assert(pairs != NULL && oauth != NULL);
+
     size_t i = start;
     pairs[i].key = "oauth_version";
     pairs[i].value = "1.0";
@@ -113,6 +121,8 @@ static size_t oauth_populate_keyvalue_from_oauth(KeyValue* pairs,
 
 static int oauth_compare_key(const void* a_ptr, const void* b_ptr)
 {
+    g_assert(a_ptr != NULL && b_ptr != NULL);
+
     KeyValue *a, *b;
     a = (KeyValue*)a_ptr;
     b = (KeyValue*)b_ptr;
@@ -123,6 +133,8 @@ static int oauth_compare_key(const void* a_ptr, const void* b_ptr)
 static int oauth_normalized_parameters_v(char* output, size_t outsize,
         const OAuth* oauth, size_t n_args, va_list args)
 {
+    g_assert(output != NULL && oauth != NULL);
+
     // Account for oauth* headers
     size_t n_parameters = n_args + 6;
     KeyValue *pairs = g_malloc0(n_parameters * sizeof(KeyValue));
@@ -172,6 +184,8 @@ int oauth_normalized_parameters(char* output, size_t outsize,
 
 static unsigned base64_encode(const char* input, unsigned length, char* output, size_t outsize)
 {
+    g_assert(input != NULL && output != NULL);
+
     BIO *bmem, *b64;
     BUF_MEM *bptr;
     unsigned written;
@@ -195,6 +209,8 @@ static unsigned base64_encode(const char* input, unsigned length, char* output, 
 
 unsigned oauth_get_basestring(const char* method, const char* url, const char* norm_params, char* output, size_t outsize)
 {
+    g_assert(method != NULL && url != NULL && norm_params != NULL && output != NULL);
+
     char* escaped_url = curl_easy_escape(NULL, url, 0);
     char* escaped_params = curl_easy_escape(NULL, norm_params, 0);
 
@@ -210,6 +226,8 @@ int oauth_get_signature(const char* method, const char* url, const char* norm_pa
         const OAuth* oauth,
         char* output, size_t outsize)
 {
+    g_assert(method != NULL && url != NULL && norm_params != NULL && oauth != NULL && output != NULL);
+
     char payload[2048];
     char key_buffer[512];
 
@@ -239,6 +257,8 @@ int oauth_get_signature(const char* method, const char* url, const char* norm_pa
 int oauth_get_header(char* buffer, size_t buffer_size, const OAuth* oauth,
         const char* method, const char* url, size_t n_args, va_list args)
 {
+    g_assert(buffer != NULL && oauth != NULL && method != NULL && url != NULL);
+
     char normalized[1024];
     char signature[1024];
 

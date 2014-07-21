@@ -26,6 +26,8 @@
 
 char* gfal2_dropbox_extract_path(const char* url, char* output, size_t output_size)
 {
+    g_assert(url != NULL && output != NULL);
+
     char* p = strchr(url, ':');
     if (!p)
         return NULL;
@@ -46,6 +48,8 @@ char* gfal2_dropbox_extract_path(const char* url, char* output, size_t output_si
 int gfal2_dropbox_build_url(const char* api_base, const char* url,
         char* output_url, size_t output_size, GError** error)
 {
+    g_assert(api_base != NULL && url != NULL && output_url != NULL && error != NULL);
+
     char* end = g_stpncpy(output_url, api_base, output_size);
     size_t api_base_len = (end - output_url);
     end = gfal2_dropbox_extract_path(url, end, output_size - api_base_len);
@@ -60,6 +64,8 @@ int gfal2_dropbox_build_url(const char* api_base, const char* url,
 int gfal2_dropbox_concat_args(const char* url, size_t n_args, va_list args,
         char* url_buffer, size_t bufsize)
 {
+    g_assert(url != NULL && url_buffer != NULL);
+
     if (n_args == 0) {
         g_strlcpy(url_buffer, url, bufsize);
         return 0;

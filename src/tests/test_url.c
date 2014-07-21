@@ -37,9 +37,10 @@ void test_extract_path()
 
 void test_build_url()
 {
+    GError *error = NULL;
     char buffer[1024];
     gfal2_dropbox_build_url("https://api.dropbox.com/base", "dropbox://dropbox.com/my/path",
-            buffer, sizeof(buffer), NULL);
+            buffer, sizeof(buffer), &error);
 
     g_assert_cmpstr("https://api.dropbox.com/base/my/path", ==, buffer);
 
