@@ -19,6 +19,7 @@
 #include "../gfal_dropbox_url.h"
 #include <glib.h>
 #include <stdio.h>
+#include <string.h>
 
 
 void test_extract_path()
@@ -29,7 +30,7 @@ void test_extract_path()
     g_assert(NULL == gfal2_dropbox_extract_path("dropbox://path", buffer, sizeof(buffer)));
     g_assert(NULL != gfal2_dropbox_extract_path("dropbox://dropbox.com/my/path", buffer, sizeof(buffer)));
 
-    g_assert_cmpstr("/my/path", ==, buffer);
+    g_assert(0 == strcmp("/my/path", buffer));
 
     printf("Extract path OK\n");
 }
@@ -42,7 +43,7 @@ void test_build_url()
     gfal2_dropbox_build_url("https://api.dropbox.com/base", "dropbox://dropbox.com/my/path",
             buffer, sizeof(buffer), &error);
 
-    g_assert_cmpstr("https://api.dropbox.com/base/my/path", ==, buffer);
+    g_assert(0 == strcmp("https://api.dropbox.com/base/my/path", buffer));
 
     printf("Build url path OK\n");
 }
@@ -63,15 +64,15 @@ void test_concat_args()
     char buffer[1024];
 
     gfal2_dropbox_concat_args_wrap("https://api.dropbox.com/base/my/path", buffer, sizeof(buffer), 0);
-    g_assert_cmpstr("https://api.dropbox.com/base/my/path", ==, buffer);
+    g_assert(0 == strcmp("https://api.dropbox.com/base/my/path", buffer));
 
     gfal2_dropbox_concat_args_wrap("https://api.dropbox.com/base/my/path",
             buffer, sizeof(buffer), 1, "key", "value");
-    g_assert_cmpstr("https://api.dropbox.com/base/my/path?key=value", ==, buffer);
+    g_assert(0 == strcmp("https://api.dropbox.com/base/my/path?key=value", buffer));
 
     gfal2_dropbox_concat_args_wrap("https://api.dropbox.com/base/my/path",
             buffer, sizeof(buffer), 2, "key", "value", "something", "else");
-    g_assert_cmpstr("https://api.dropbox.com/base/my/path?key=value&something=else", ==, buffer);
+    g_assert(0 == strcmp("https://api.dropbox.com/base/my/path?key=value&something=else", buffer));
 
     printf("Concat args OK\n");
 }

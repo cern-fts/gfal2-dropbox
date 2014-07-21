@@ -36,20 +36,17 @@ void test_oauth_example()
     oauth_normalized_parameters(params_buffer, sizeof(params_buffer), &oauth, 2,
             "file", "vacation.jpg", "size", "original");
 
-    g_assert_cmpstr(
+    g_assert(0 == strcmp(
             "file=vacation.jpg&oauth_consumer_key=dpf43f3p2l4k3l03&oauth_nonce=kllo9940pd9333jh"
             "&oauth_signature_method=HMAC-SHA1&oauth_timestamp=1191242096&oauth_token=nnch734d00sl2jdk"
-            "&oauth_version=1.0&size=original",
-            ==,
-            params_buffer
-    );
+            "&oauth_version=1.0&size=original", params_buffer));
 
     printf("OAuth Normalized parameters OK\n");
 
     char signature_buffer[1024] = {0};
     oauth_get_signature("GET", "http://photos.example.net/photos", params_buffer, &oauth, signature_buffer, sizeof(signature_buffer));
 
-    g_assert_cmpstr("tR3+Ty81lMeYAr/Fid0kMTYa/WM=", ==, signature_buffer);
+    g_assert(0 == strcmp("tR3+Ty81lMeYAr/Fid0kMTYa/WM=", signature_buffer));
 
     printf("OAuth Signature OK\n");
 }
@@ -70,13 +67,10 @@ void test_twitter_example()
                "status", "Hello Ladies + Gentlemen, a signed OAuth request!",
                "include_entities", "true");
 
-    g_assert_cmpstr(
+    g_assert(0 == strcmp(
             "include_entities=true&oauth_consumer_key=xvz1evFS4wEEPTGEFPHBog&oauth_nonce=kYjzVBB8Y0ZFabxSWbWovY3uYSQ2pTgmZeNu2VS4cg&"
             "oauth_signature_method=HMAC-SHA1&oauth_timestamp=1318622958&oauth_token=370773112-GmHxMAgYyLbNEtIKZeRNFsMKPR9EyMZeS9weJAEb&"
-            "oauth_version=1.0&status=Hello%20Ladies%20%2B%20Gentlemen%2C%20a%20signed%20OAuth%20request%21",
-            ==,
-            params_buffer
-    );
+            "oauth_version=1.0&status=Hello%20Ladies%20%2B%20Gentlemen%2C%20a%20signed%20OAuth%20request%21", params_buffer));
 
     printf("Twitter example normalized OK\n");
 
@@ -84,14 +78,12 @@ void test_twitter_example()
     oauth_get_basestring("POST", "https://api.twitter.com/1/statuses/update.json",
             params_buffer, basestring_buffer, sizeof(basestring_buffer));
 
-    g_assert_cmpstr(
+    g_assert(0 == strcmp(
             "POST&https%3A%2F%2Fapi.twitter.com%2F1%2Fstatuses%2Fupdate.json&include_entities"
             "%3Dtrue%26oauth_consumer_key%3Dxvz1evFS4wEEPTGEFPHBog%26oauth_nonce%3DkYjzVBB8Y0ZFabxSWbWovY3uYSQ2pTgmZeNu2VS4cg"
             "%26oauth_signature_method%3DHMAC-SHA1%26oauth_timestamp%3D1318622958%26oauth_token"
             "%3D370773112-GmHxMAgYyLbNEtIKZeRNFsMKPR9EyMZeS9weJAEb%26oauth_version%3D1.0"
-            "%26status%3DHello%2520Ladies%2520%252B%2520Gentlemen%252C%2520a%2520signed%2520OAuth%2520request%2521",
-            ==,
-            basestring_buffer
+            "%26status%3DHello%2520Ladies%2520%252B%2520Gentlemen%252C%2520a%2520signed%2520OAuth%2520request%2521", basestring_buffer)
     );
 
     printf("Twitter base string OK\n");
@@ -100,7 +92,7 @@ void test_twitter_example()
     oauth_get_signature("POST", "https://api.twitter.com/1/statuses/update.json",
             params_buffer, &oauth, signature_buffer, sizeof(signature_buffer));
 
-    g_assert_cmpstr("tnnArxj06cWHq44gCs1OSKk/jLY=", ==, signature_buffer);
+    g_assert(0 == strcmp("tnnArxj06cWHq44gCs1OSKk/jLY=", signature_buffer));
 
     printf("Twitter signature OK\n");
 }
