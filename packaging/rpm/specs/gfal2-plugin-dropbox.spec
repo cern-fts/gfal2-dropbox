@@ -15,7 +15,11 @@ BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 BuildRequires:  cmake
 BuildRequires:  gfal2-devel
 BuildRequires:  json-c-devel
+%if %{?fedora}%{!?fedora:0} >= 10 || %{?rhel}%{!?rhel:0} >= 6
 BuildRequires:  libcurl-devel
+%else
+BuildRequires:  curl-devel
+%endif
 
 %description
 The Grid File Access Library, GFAL2, provides a simple POSIX-like API for file
