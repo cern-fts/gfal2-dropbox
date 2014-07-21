@@ -21,10 +21,10 @@
 // Generate OAuth Authorization header
 static int gfal2_dropbox_get_oauth_header(gfal2_context_t gfal2_context, char* buffer, size_t buffer_size, GError** error)
 {
-    const char* app_key = gfal2_get_opt_string(gfal2_context, "OAUTH", "APP_KEY", NULL);
-    const char* access_token = gfal2_get_opt_string(gfal2_context, "OAUTH", "ACCESS_TOKEN", NULL);
-    const char* app_secret = gfal2_get_opt_string(gfal2_context, "OAUTH", "APP_SECRET", NULL);
-    const char* access_token_secret = gfal2_get_opt_string(gfal2_context, "OAUTH", "ACCESS_TOKEN_SECRET", NULL);
+    const char* app_key = gfal2_get_opt_string(gfal2_context, "DROPBOX", "APP_KEY", NULL);
+    const char* access_token = gfal2_get_opt_string(gfal2_context, "DROPBOX", "ACCESS_TOKEN", NULL);
+    const char* app_secret = gfal2_get_opt_string(gfal2_context, "DROPBOX", "APP_SECRET", NULL);
+    const char* access_token_secret = gfal2_get_opt_string(gfal2_context, "DROPBOX", "ACCESS_TOKEN_SECRET", NULL);
 
     if (!app_key || !access_token || !app_secret || !access_token_secret) {
         gfal2_set_error(
