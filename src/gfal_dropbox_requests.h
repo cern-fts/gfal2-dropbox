@@ -14,38 +14,37 @@
  *  limitations under the License.
 **/
 
-// Some handy methods to avoid writting the same boilerplate code in
-// every function
+// Methods to perform requests to the Dropbox API
 
 #pragma once
-#ifndef _GFAL_DROPBOX_HELPERS_H
-#define _GFAL_DROPBOX_HELPERS_H
+#ifndef _GFAL_DROPBOX_REQUESTS_H
+#define _GFAL_DROPBOX_REQUESTS_H
 
 #include "gfal_dropbox.h"
-
-// Extract the path from the URL
-char* gfal2_dropbox_extract_path(const char* url, char* output, size_t output_size);
-
-// Build the right Dropbox URL
-int gfal2_dropbox_build_url(const char* api_base, const char* url, const char* args,
-        char* output_url, size_t output_size, GError** error);
 
 /// These methods take care of setting the OAuth headers!
 
 // Do the request, put the output in output
+// n_args specifies how many arguments the URL will have, and then
+// key and value must be passed separately gfal2_dropbox_get(..., 1, "list", "true)
 ssize_t gfal2_dropbox_get(DropboxHandle* dropbox,
-        const char* url, char* output, size_t output_size, GError** error);
+        const char* url, char* output, size_t output_size, GError** error,
+        size_t n_args, ...);
 
 // Request with a range header
+// n_args specifies how many arguments the URL will have, and then
+// key and value must be passed separately gfal2_dropbox_get(..., 1, "list", "true)
 ssize_t gfal2_dropbox_get_range(DropboxHandle* dropbox,
         const char* url, off_t offset, off_t size,
-        char* output, size_t output_size, GError** error);
+        char* output, size_t output_size, GError** error,
+        size_t n_args, ...);
 
 // Post a JSON body
 // Returns the response size
 ssize_t gfal2_dropbox_post(DropboxHandle* dropbox,
         const char* url, const char* payload, const char* content_type,
-        char* output, size_t output_size, GError** error);
+        char* output, size_t output_size, GError** error,
+        size_t n_args, ...);
 
 // Do a PUT
 // Returns the response size
@@ -53,6 +52,7 @@ ssize_t gfal2_dropbox_put(DropboxHandle* dropbox,
         const char* url,
         const char* buffer, size_t count,
         char* payload, size_t payload_size,
-        GError** error);
+        GError** error,
+        size_t n_args, ...);
 
 #endif

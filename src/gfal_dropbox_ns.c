@@ -17,7 +17,8 @@
 // Namespace operations, except listing dir
 
 #include "gfal_dropbox.h"
-#include "gfal_dropbox_helpers.h"
+#include "gfal_dropbox_requests.h"
+#include "gfal_dropbox_url.h"
 #include <common/gfal_common_err_helpers.h>
 #include <json.h>
 #include <string.h>
@@ -30,17 +31,15 @@ int gfal2_dropbox_stat(plugin_handle plugin_data, const char* url,
     GError* tmp_err = NULL;
 
     char url_buffer[GFAL_URL_MAX_LEN];
-    gfal2_dropbox_build_url(
-            "https://api.dropbox.com/1/metadata/auto/", url, "list=false",
-            url_buffer, sizeof(url_buffer), &tmp_err
-    );
+    gfal2_dropbox_build_url("https://api.dropbox.com/1/metadata/auto", url,
+            url_buffer, sizeof(url_buffer), &tmp_err);
     if (tmp_err) {
         gfal2_propagate_prefixed_error(error, tmp_err, __func__);
         return -1;
     }
 
     char buffer[1024];
-    ssize_t ret = gfal2_dropbox_get(dropbox, url_buffer, buffer, sizeof(buffer), &tmp_err);
+    ssize_t ret = gfal2_dropbox_get(dropbox, url_buffer, buffer, sizeof(buffer), &tmp_err, 1, "list", "false");
     if (ret > 0) {
         json_object* stat = json_tokener_parse(buffer);
         if (stat) {
@@ -93,6 +92,10 @@ int gfal2_dropbox_mkdir(plugin_handle plugin_data, const char* url, mode_t mode,
         gfal2_propagate_prefixed_error(error, tmp_err, __func__);
         return -1;
     }
+    else {
+        g_error_free(tmp_err);
+        tmp_err = NULL;
+    }
 
     char path[GFAL_URL_MAX_LEN];
     if (gfal2_dropbox_extract_path(url, path, sizeof(path)) < 0) {
@@ -100,13 +103,11 @@ int gfal2_dropbox_mkdir(plugin_handle plugin_data, const char* url, mode_t mode,
         return -1;
     }
 
-    char url_buffer[GFAL_URL_MAX_LEN];
-    snprintf(url_buffer, sizeof(url_buffer), "https://api.dropbox.com/1/fileops/create_folder?root=auto&path=%s", path);
-
     char output[1024];
     ssize_t resp_size = gfal2_dropbox_post(dropbox,
-            url_buffer, NULL, NULL,
-            output, sizeof(output), &tmp_err);
+            "https://api.dropbox.com/1/fileops/create_folder", NULL, NULL,
+            output, sizeof(output), &tmp_err,
+            2, "root", "auto", "path", path);
     if (resp_size < 0) {
         gfal2_propagate_prefixed_error(error, tmp_err, __func__);
         return -1;
@@ -141,13 +142,11 @@ int gfal2_dropbox_unlink(plugin_handle plugin_data, const char* url,
         return -1;
     }
 
-    char url_buffer[GFAL_URL_MAX_LEN];
-    snprintf(url_buffer, sizeof(url_buffer), "https://api.dropbox.com/1/fileops/delete?root=auto&path=%s", path);
-
     char output[1024];
     ssize_t resp_size = gfal2_dropbox_post(dropbox,
-            url_buffer, NULL, NULL,
-            output, sizeof(output), &tmp_err);
+            "https://api.dropbox.com/1/fileops/delete", NULL, NULL,
+            output, sizeof(output), &tmp_err,
+            2, "root", "auto", "path", path);
     if (resp_size < 0) {
         gfal2_propagate_prefixed_error(error, tmp_err, __func__);
         return -1;
@@ -181,14 +180,11 @@ int gfal2_dropbox_rename(plugin_handle plugin_data, const char * oldurl,
         return -1;
     }
 
-    char url_buffer[GFAL_URL_MAX_LEN];
-    snprintf(url_buffer, sizeof(url_buffer),
-            "https://api.dropbox.com/1/fileops/delete?root=auto&from_path=%s&to_path=%s", from_path, to_path);
-
     char output[1024];
     ssize_t resp_size = gfal2_dropbox_post(dropbox,
-            url_buffer, NULL, NULL,
-            output, sizeof(output), &tmp_err);
+            "https://api.dropbox.com/1/fileops/move", NULL, NULL,
+            output, sizeof(output), &tmp_err,
+            2, "from_path", from_path, "to_path", to_path);
     if (resp_size < 0) {
         gfal2_propagate_prefixed_error(error, tmp_err, __func__);
         return -1;

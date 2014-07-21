@@ -17,7 +17,8 @@
 // Input/Output functions
 
 #include "gfal_dropbox.h"
-#include "gfal_dropbox_helpers.h"
+#include "gfal_dropbox_requests.h"
+#include "gfal_dropbox_url.h"
 #include <common/gfal_common_err_helpers.h>
 #include <json.h>
 #include <string.h>
@@ -73,8 +74,8 @@ gfal_file_handle gfal2_dropbox_fopen(plugin_handle plugin_data, const char* url,
 
     if (flag == O_RDONLY) {
         gfal2_dropbox_build_url(
-                "https://api-content.dropbox.com/1/files/auto/",
-                url, NULL, io_handler->url, sizeof(io_handler->url), &tmp_err
+                "https://api-content.dropbox.com/1/files/auto",
+                url, io_handler->url, sizeof(io_handler->url), &tmp_err
         );
     }
     else {
@@ -102,7 +103,7 @@ ssize_t gfal2_dropbox_fread(plugin_handle plugin_data, gfal_file_handle fd, void
         return 0;
 
     ssize_t ret = gfal2_dropbox_get_range(dropbox, io_handler->url, io_handler->cur, count,
-            (char*)buff, count, error);
+            (char*)buff, count, error, 0);
 
     if (ret >= 0)
         io_handler->cur += ret;
@@ -130,7 +131,21 @@ ssize_t gfal2_dropbox_fwrite(plugin_handle plugin_data, gfal_file_handle fd,
         strncpy(url_buffer, io_handler->url, sizeof(url_buffer));
 
     char output[1024];
-    ssize_t resp_size = gfal2_dropbox_put(dropbox, url_buffer, buff, count, output, sizeof(output), error);
+    ssize_t resp_size;
+
+    if (io_handler->got_upload_id) {
+        char offset_str[64];
+        snprintf(offset_str, sizeof(offset_str), "%ld", io_handler->cur);
+        resp_size = gfal2_dropbox_put(dropbox, io_handler->url,
+                buff, count, output, sizeof(output), error,
+                2, "upload_id", io_handler->upload_id, "offset", offset_str);
+    }
+    else {
+        resp_size = gfal2_dropbox_put(dropbox, io_handler->url,
+                buff, count, output, sizeof(output), error,
+                0);
+    }
+
     if (resp_size < 0) {
         io_handler->dirty = 1;
         return -1;
@@ -139,7 +154,7 @@ ssize_t gfal2_dropbox_fwrite(plugin_handle plugin_data, gfal_file_handle fd,
         json_object* response = json_tokener_parse(output);
         json_object* up_id = json_object_object_get(response, "upload_id");
         if (up_id) {
-            snprintf(io_handler->upload_id, sizeof(io_handler->upload_id), "upload_id=%s", json_object_get_string(up_id));
+            strncpy(io_handler->upload_id, json_object_get_string(up_id), sizeof(io_handler->upload_id));
             io_handler->got_upload_id = 1;
         }
         json_object_put(response);
@@ -157,15 +172,14 @@ int gfal2_dropbox_fclose(plugin_handle plugin_data, gfal_file_handle fd, GError 
 
     if (io_handler->flag == O_WRONLY && io_handler->upload_id[0] && !io_handler->dirty) {
         gfal2_dropbox_build_url(
-                    "https://api-content.dropbox.com/1/commit_chunked_upload/auto/",
-                    io_handler->original, io_handler->upload_id,
-                    io_handler->url, sizeof(io_handler->url), error
-        );
+                    "https://api-content.dropbox.com/1/commit_chunked_upload/auto",
+                    io_handler->original, io_handler->url, sizeof(io_handler->url), error);
         if (*error == NULL) {
             char output[1024];
             ssize_t resp_size = gfal2_dropbox_post(dropbox,
                     io_handler->url, NULL, NULL,
-                    output, sizeof(output), error);
+                    output, sizeof(output), error, 1,
+                    "upload_id", io_handler->upload_id);
 
             if (resp_size < 0) {
                 gfal2_set_error(error, dropbox_domain(), EIO, __func__, "Could not finish the write");

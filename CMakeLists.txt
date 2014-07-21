@@ -16,8 +16,10 @@ find_package (PkgConfig REQUIRED)
 
 add_definitions (-D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE)
 
-add_subdirectory (src)
+enable_testing()
+
 add_subdirectory (dist)
+add_subdirectory (src)
 
 install (
     FILES "README" "LICENSE" "RELEASE-NOTES"

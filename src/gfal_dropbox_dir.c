@@ -17,7 +17,8 @@
 // Directory listing functions
 
 #include "gfal_dropbox.h"
-#include "gfal_dropbox_helpers.h"
+#include "gfal_dropbox_requests.h"
+#include "gfal_dropbox_url.h"
 #include <logger/gfal_logger.h>
 #include <common/gfal_common_err_helpers.h>
 #include <json.h>
@@ -51,8 +52,8 @@ gfal_file_handle gfal2_dropbox_opendir(plugin_handle plugin_data,
 
     char url_buffer[GFAL_URL_MAX_LEN];
     gfal2_dropbox_build_url(
-            "https://api.dropbox.com/1/metadata/auto/", url,
-            "list=true", url_buffer, sizeof(url_buffer), &tmp_err
+            "https://api.dropbox.com/1/metadata/auto", url,
+            url_buffer, sizeof(url_buffer), &tmp_err
     );
     if (tmp_err) {
         gfal2_propagate_prefixed_error(error, tmp_err, __func__);
@@ -60,7 +61,7 @@ gfal_file_handle gfal2_dropbox_opendir(plugin_handle plugin_data,
     }
 
     char buffer[102400];
-    ssize_t ret = gfal2_dropbox_get(dropbox, url_buffer, buffer, sizeof(buffer), &tmp_err);
+    ssize_t ret = gfal2_dropbox_get(dropbox, url_buffer, buffer, sizeof(buffer), &tmp_err, 1, "list", "true");
     if (ret > 0) {
         json_object* root = json_tokener_parse(buffer);
         if (root) {
