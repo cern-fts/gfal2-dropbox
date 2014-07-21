@@ -20,7 +20,7 @@ BuildRequires:  libcurl-devel
 %else
 BuildRequires:  curl-devel
 %endif
-BuildRequired:  openssl-devel
+BuildRequires:  openssl-devel
 
 %description
 The Grid File Access Library, GFAL2, provides a simple POSIX-like API for file
