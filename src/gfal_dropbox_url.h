@@ -23,6 +23,7 @@
 #include <glib.h>
 
 // Extract the path from the URL
+// Returns a pointer to the NULL termination character
 char* gfal2_dropbox_extract_path(const char* url, char* output, size_t output_size);
 
 // Put into output_url the URL resulting of concatenating the api call and the url

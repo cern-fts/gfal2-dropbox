@@ -128,7 +128,7 @@ struct dirent* gfal2_dropbox_readdirpp(plugin_handle plugin_data,
             fname++;
         else
             fname = path;
-        strncpy(dir_handle->ent.d_name, fname, sizeof(dir_handle->ent.d_name));
+        g_strlcpy(dir_handle->ent.d_name, fname, sizeof(dir_handle->ent.d_name));
         dir_handle->ent.d_reclen = strlen(dir_handle->ent.d_name);
     }
 

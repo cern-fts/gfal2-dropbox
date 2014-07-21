@@ -135,21 +135,15 @@ static int oauth_normalized_parameters_v(char* output, size_t outsize,
 
     // Concatenate using & and escaping
     size_t i;
-    char *p = output, *end = (output + outsize);
+    char *p = output;
     size_t remaining = outsize;
     for (i = 0; i < n_parameters; ++i) {
         char* escaped_key = curl_easy_escape(NULL, pairs[i].key, 0);
         char* escaped_value = curl_easy_escape(NULL, pairs[i].value, 0);
 
-        p = stpncpy(p, escaped_key, remaining);
-        remaining = (end - p);
-        p = stpncpy(p, "=", remaining);
-        remaining = (end - p);
-        p = stpncpy(p, escaped_value, remaining);
-        remaining = (end - p);
-
-        p = stpncpy(p, "&", remaining);
-        remaining = (end - p);
+        size_t printed = snprintf(p, remaining, "%s=%s&", escaped_key, escaped_value);
+        remaining -= printed;
+        p += printed;
 
         curl_free(escaped_key);
         curl_free(escaped_value);

@@ -21,6 +21,8 @@
 #include <common/gfal_common_err_helpers.h>
 #include <string.h>
 
+#define g_stpncpy(dst, src, max) (g_strlcpy(dst, src, max) + dst)
+
 
 char* gfal2_dropbox_extract_path(const char* url, char* output, size_t output_size)
 {
@@ -37,14 +39,14 @@ char* gfal2_dropbox_extract_path(const char* url, char* output, size_t output_si
     p = strchr(p, '/');
     if (!p)
         return NULL;
-    return stpncpy(output, p, output_size);
+    return g_stpncpy(output, p, output_size);
 }
 
 
 int gfal2_dropbox_build_url(const char* api_base, const char* url,
         char* output_url, size_t output_size, GError** error)
 {
-    char* end = stpncpy(output_url, api_base, output_size);
+    char* end = g_stpncpy(output_url, api_base, output_size);
     size_t api_base_len = (end - output_url);
     end = gfal2_dropbox_extract_path(url, end, output_size - api_base_len);
     if (end == NULL) {
@@ -59,26 +61,24 @@ int gfal2_dropbox_concat_args(const char* url, size_t n_args, va_list args,
         char* url_buffer, size_t bufsize)
 {
     if (n_args == 0) {
-        strncpy(url_buffer, url, bufsize);
+        g_strlcpy(url_buffer, url, bufsize);
         return 0;
     }
 
     char* end = url_buffer + bufsize;
-    char* p = stpncpy(url_buffer, url, bufsize);
+    char* p = g_stpncpy(url_buffer, url, bufsize);
     bufsize = end - p;
-    p = stpncpy(p, "?", bufsize);
+    p = g_stpncpy(p, "?", bufsize);
 
     size_t i;
     for (i = 0; i < n_args; ++i) {
         char* key = curl_easy_escape(NULL, va_arg(args, const char*), 0);
         char* value = curl_easy_escape(NULL, va_arg(args, const char*), 0);
-        p = stpncpy(p, key, bufsize);
-        bufsize = end - p;
-        p = stpncpy(p, "=", bufsize);
-        bufsize = end - p;
-        p = stpncpy(p, value, bufsize);
-        bufsize = end - p;
-        p = stpncpy(p, "&", bufsize);
+
+        size_t printed = snprintf(p, bufsize, "%s=%s&", key, value);
+        bufsize -= printed;
+        p += printed;
+
         curl_free(key);
         curl_free(value);
     }

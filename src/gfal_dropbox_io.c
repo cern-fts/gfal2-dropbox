@@ -69,7 +69,7 @@ gfal_file_handle gfal2_dropbox_fopen(plugin_handle plugin_data, const char* url,
     }
 
     DropboxIOHandler* io_handler = calloc(1, sizeof(DropboxIOHandler));
-    strncpy(io_handler->original, url, sizeof(io_handler->original));
+    g_strlcpy(io_handler->original, url, sizeof(io_handler->original));
     io_handler->flag = flag;
 
     if (flag == O_RDONLY) {
@@ -79,7 +79,7 @@ gfal_file_handle gfal2_dropbox_fopen(plugin_handle plugin_data, const char* url,
         );
     }
     else {
-        strncpy(io_handler->url, "https://api-content.dropbox.com/1/chunked_upload", sizeof(io_handler->url));
+        g_strlcpy(io_handler->url, "https://api-content.dropbox.com/1/chunked_upload", sizeof(io_handler->url));
     }
 
     io_handler->cur = 0;
@@ -128,7 +128,7 @@ ssize_t gfal2_dropbox_fwrite(plugin_handle plugin_data, gfal_file_handle fd,
     if (io_handler->got_upload_id)
         snprintf(url_buffer, sizeof(url_buffer), "%s?%s&offset=%zd", io_handler->url, io_handler->upload_id, io_handler->cur);
     else
-        strncpy(url_buffer, io_handler->url, sizeof(url_buffer));
+        g_strlcpy(url_buffer, io_handler->url, sizeof(url_buffer));
 
     char output[1024];
     ssize_t resp_size;
@@ -154,7 +154,7 @@ ssize_t gfal2_dropbox_fwrite(plugin_handle plugin_data, gfal_file_handle fd,
         json_object* response = json_tokener_parse(output);
         json_object* up_id = json_object_object_get(response, "upload_id");
         if (up_id) {
-            strncpy(io_handler->upload_id, json_object_get_string(up_id), sizeof(io_handler->upload_id));
+            g_strlcpy(io_handler->upload_id, json_object_get_string(up_id), sizeof(io_handler->upload_id));
             io_handler->got_upload_id = 1;
         }
         json_object_put(response);
