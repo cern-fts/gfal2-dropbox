@@ -177,7 +177,7 @@ int gfal2_dropbox_fclose(plugin_handle plugin_data, gfal_file_handle fd, GError 
         if (*error == NULL) {
             char output[1024];
             ssize_t resp_size = gfal2_dropbox_post(dropbox,
-                    io_handler->url, NULL, NULL,
+                    io_handler->url,
                     output, sizeof(output), error, 1,
                     "upload_id", io_handler->upload_id);
 

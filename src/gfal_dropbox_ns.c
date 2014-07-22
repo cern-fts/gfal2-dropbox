@@ -105,7 +105,7 @@ int gfal2_dropbox_mkdir(plugin_handle plugin_data, const char* url, mode_t mode,
 
     char output[1024];
     ssize_t resp_size = gfal2_dropbox_post(dropbox,
-            "https://api.dropbox.com/1/fileops/create_folder", NULL, NULL,
+            "https://api.dropbox.com/1/fileops/create_folder",
             output, sizeof(output), &tmp_err,
             2, "root", "auto", "path", path);
     if (resp_size < 0) {
@@ -144,7 +144,7 @@ int gfal2_dropbox_unlink(plugin_handle plugin_data, const char* url,
 
     char output[1024];
     ssize_t resp_size = gfal2_dropbox_post(dropbox,
-            "https://api.dropbox.com/1/fileops/delete", NULL, NULL,
+            "https://api.dropbox.com/1/fileops/delete",
             output, sizeof(output), &tmp_err,
             2, "root", "auto", "path", path);
     if (resp_size < 0) {
@@ -182,7 +182,7 @@ int gfal2_dropbox_rename(plugin_handle plugin_data, const char * oldurl,
 
     char output[1024];
     ssize_t resp_size = gfal2_dropbox_post(dropbox,
-            "https://api.dropbox.com/1/fileops/move", NULL, NULL,
+            "https://api.dropbox.com/1/fileops/move",
             output, sizeof(output), &tmp_err,
             2, "from_path", from_path, "to_path", to_path);
     if (resp_size < 0) {

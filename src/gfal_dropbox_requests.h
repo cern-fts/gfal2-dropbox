@@ -42,8 +42,7 @@ ssize_t gfal2_dropbox_get_range(DropboxHandle* dropbox,
 // Post a JSON body
 // Returns the response size
 ssize_t gfal2_dropbox_post(DropboxHandle* dropbox,
-        const char* url, const char* payload, const char* content_type,
-        char* output, size_t output_size, GError** error,
+        const char* url, char* output, size_t output_size, GError** error,
         size_t n_args, ...);
 
 // Do a PUT
