@@ -79,6 +79,7 @@ static ssize_t gfal2_dropbox_perform_v(DropboxHandle* dropbox,
     // OAuth
     if (oauth_setup(dropbox->gfal2_context, &oauth, &tmp_err) < 0) {
         gfal2_propagate_prefixed_error(error, tmp_err, __func__);
+        return -1;
     }
 
     char authorization_buffer[1024];
