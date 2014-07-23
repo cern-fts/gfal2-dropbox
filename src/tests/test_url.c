@@ -21,6 +21,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "test_help.h"
+
 
 void test_extract_path()
 {
@@ -30,7 +32,7 @@ void test_extract_path()
     g_assert(NULL == gfal2_dropbox_extract_path("dropbox://path", buffer, sizeof(buffer)));
     g_assert(NULL != gfal2_dropbox_extract_path("dropbox://dropbox.com/my/path", buffer, sizeof(buffer)));
 
-    g_assert(0 == strcmp("/my/path", buffer));
+    ASSERT_STR_EQ("/my/path", buffer);
 
     printf("Extract path OK\n");
 }
@@ -43,7 +45,7 @@ void test_build_url()
     gfal2_dropbox_build_url("https://api.dropbox.com/base", "dropbox://dropbox.com/my/path",
             buffer, sizeof(buffer), &error);
 
-    g_assert(0 == strcmp("https://api.dropbox.com/base/my/path", buffer));
+    ASSERT_STR_EQ("https://api.dropbox.com/base/my/path", buffer);
 
     printf("Build url path OK\n");
 }
@@ -64,17 +66,29 @@ void test_concat_args()
     char buffer[1024];
 
     gfal2_dropbox_concat_args_wrap("https://api.dropbox.com/base/my/path", buffer, sizeof(buffer), 0);
-    g_assert(0 == strcmp("https://api.dropbox.com/base/my/path", buffer));
+    ASSERT_STR_EQ("https://api.dropbox.com/base/my/path", buffer);
 
     gfal2_dropbox_concat_args_wrap("https://api.dropbox.com/base/my/path",
             buffer, sizeof(buffer), 1, "key", "value");
-    g_assert(0 == strcmp("https://api.dropbox.com/base/my/path?key=value", buffer));
+    ASSERT_STR_EQ("https://api.dropbox.com/base/my/path?key=value", buffer);
 
     gfal2_dropbox_concat_args_wrap("https://api.dropbox.com/base/my/path",
             buffer, sizeof(buffer), 2, "key", "value", "something", "else");
-    g_assert(0 == strcmp("https://api.dropbox.com/base/my/path?key=value&something=else", buffer));
+    ASSERT_STR_EQ("https://api.dropbox.com/base/my/path?key=value&something=else", buffer);
 
     printf("Concat args OK\n");
+}
+
+
+void test_normalize_url()
+{
+    char buffer[1024];
+
+    gfal2_dropbox_normalize_url("dROPbox://MyHost.com//path///file%a5/SOM///thing", buffer, sizeof(buffer));
+
+    ASSERT_STR_EQ("dropbox://myhost.com/path/file%A5/SOM/thing", buffer);
+
+    g_assert(0 > gfal2_dropbox_normalize_url("dROPbox://MyHost.com//path///file%a5/SOM///thing", buffer, 5));
 }
 
 
@@ -83,5 +97,6 @@ int main(int argc, char** argv)
     test_extract_path();
     test_build_url();
     test_concat_args();
+    test_normalize_url();
     return 0;
 }

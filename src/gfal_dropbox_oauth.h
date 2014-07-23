@@ -50,7 +50,7 @@ int oauth_normalized_parameters(char* output, size_t outsize,
         const OAuth* oauth, size_t n_args, ...);
 
 // Generates the base string
-unsigned oauth_get_basestring(const char* method, const char* url,
+int oauth_get_basestring(const char* method, const char* url,
         const char* norm_params, char* output, size_t outsize);
 
 // Generates the signature for the request

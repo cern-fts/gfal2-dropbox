@@ -85,8 +85,12 @@ static ssize_t gfal2_dropbox_perform_v(DropboxHandle* dropbox,
     char authorization_buffer[1024];
     va_list oauth_args;
     va_copy(oauth_args, args);
-    oauth_get_header(authorization_buffer, sizeof(authorization_buffer), &oauth, method_str(method), url, n_args, oauth_args);
+    int r = oauth_get_header(authorization_buffer, sizeof(authorization_buffer), &oauth, method_str(method), url, n_args, oauth_args);
     va_end(oauth_args);
+    if (r < 0) {
+        gfal2_set_error(error, dropbox_domain(), ENOBUFS, __func__, "Could not generate the OAuth header");
+        return -1;
+    }
 
     headers = curl_slist_append(headers, authorization_buffer);
 

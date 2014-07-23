@@ -35,4 +35,7 @@ int gfal2_dropbox_build_url(const char* api_base, const char* url,
 int gfal2_dropbox_concat_args(const char* url, size_t n_args, va_list args,
         char* url_buffer, size_t bufsize);
 
+// Normalize URL
+int gfal2_dropbox_normalize_url(const char* url, char* out, size_t outsize);
+
 #endif

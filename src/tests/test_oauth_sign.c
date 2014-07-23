@@ -98,11 +98,59 @@ void test_twitter_example()
     printf("Twitter signature OK\n");
 }
 
+// Twitter example using multiple slashes in the URL
+// Must normalize. Regression for LCGUTIL-461
+void test_twitter_example_url_normalizing()
+{
+    OAuth oauth;
+    oauth.access_token = "370773112-GmHxMAgYyLbNEtIKZeRNFsMKPR9EyMZeS9weJAEb";
+    oauth.access_token_secret = "LswwdoUaIvS8ltyTt5jkRh4J50vUPVVHtR2YPi5kE";
+    oauth.app_key = "xvz1evFS4wEEPTGEFPHBog";
+    oauth.app_secret = "kAcSOqF21Fu85e7zjz7ZN2U4ZRhfV3WpwPAoE3Z7kBw";
+    oauth.timestamp = "1318622958";
+    oauth.nonce = "kYjzVBB8Y0ZFabxSWbWovY3uYSQ2pTgmZeNu2VS4cg";
+
+    char params_buffer[1024] = {0};
+    oauth_normalized_parameters(params_buffer, sizeof(params_buffer), &oauth, 2,
+               "status", "Hello Ladies + Gentlemen, a signed OAuth request!",
+               "include_entities", "true");
+
+    g_assert(0 == strcmp(
+            "include_entities=true&oauth_consumer_key=xvz1evFS4wEEPTGEFPHBog&oauth_nonce=kYjzVBB8Y0ZFabxSWbWovY3uYSQ2pTgmZeNu2VS4cg&"
+            "oauth_signature_method=HMAC-SHA1&oauth_timestamp=1318622958&oauth_token=370773112-GmHxMAgYyLbNEtIKZeRNFsMKPR9EyMZeS9weJAEb&"
+            "oauth_version=1.0&status=Hello%20Ladies%20%2B%20Gentlemen%2C%20a%20signed%20OAuth%20request%21", params_buffer));
+
+    printf("Twitter multiple slashes normalized OK\n");
+
+    char basestring_buffer[1024];
+    oauth_get_basestring("POST", "https://api.twitter.com//1/statuses///update.json",
+            params_buffer, basestring_buffer, sizeof(basestring_buffer));
+
+    g_assert(0 == strcmp(
+            "POST&https%3A%2F%2Fapi.twitter.com%2F1%2Fstatuses%2Fupdate.json&include_entities"
+            "%3Dtrue%26oauth_consumer_key%3Dxvz1evFS4wEEPTGEFPHBog%26oauth_nonce%3DkYjzVBB8Y0ZFabxSWbWovY3uYSQ2pTgmZeNu2VS4cg"
+            "%26oauth_signature_method%3DHMAC-SHA1%26oauth_timestamp%3D1318622958%26oauth_token"
+            "%3D370773112-GmHxMAgYyLbNEtIKZeRNFsMKPR9EyMZeS9weJAEb%26oauth_version%3D1.0"
+            "%26status%3DHello%2520Ladies%2520%252B%2520Gentlemen%252C%2520a%2520signed%2520OAuth%2520request%2521", basestring_buffer)
+    );
+
+    printf("Twitter multiple slashes base string OK\n");
+
+    char signature_buffer[1024] = {0};
+    oauth_get_signature("POST", "https://api.twitter.com/1/statuses/update.json",
+            params_buffer, &oauth, signature_buffer, sizeof(signature_buffer));
+
+    g_assert(0 == strcmp("tnnArxj06cWHq44gCs1OSKk/jLY=", signature_buffer));
+
+    printf("Twitter multiple slashes signature OK\n");
+}
+
 // Main
 int main(int argc, char **argv)
 {
     test_oauth_example();
     test_twitter_example();
+    test_twitter_example_url_normalizing();
 
     return 0;
 }

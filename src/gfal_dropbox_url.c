@@ -19,7 +19,9 @@
 #include "gfal_dropbox.h"
 #include "gfal_dropbox_url.h"
 #include <common/gfal_common_err_helpers.h>
+#include <ctype.h>
 #include <string.h>
+
 
 #define g_stpncpy(dst, src, max) (g_strlcpy(dst, src, max) + dst)
 
@@ -94,5 +96,65 @@ int gfal2_dropbox_concat_args(const char* url, size_t n_args, va_list args,
     if (*p == '&')
         *p = '\0';
 
+    return 0;
+}
+
+
+int gfal2_dropbox_normalize_url(const char* url, char* out, size_t outsize)
+{
+    enum {
+        NORM_SCHEME,
+        NORM_HOST,
+        NORM_PATH,
+        NORM_ESCAPED
+    } stage = NORM_SCHEME;
+
+    size_t url_len = strlen(url);
+    if (url_len > outsize)
+        return -1;
+
+    size_t i = 0;
+    const char* p = url;
+
+    while (i < outsize && *p != '\0') {
+        switch (stage) {
+            case NORM_SCHEME:
+                out[i++] = tolower(*p);
+                if (*p == ':') {
+                    out[i++] = '/';
+                    out[i++] = '/';
+                    ++p;
+                    while(*p == '/') ++p;
+                    stage = NORM_HOST;
+                    continue;
+                }
+                break;
+            case NORM_HOST:
+                out[i++] = tolower(*p);
+                if (*p == '/') {
+                    stage = NORM_PATH;
+                    --i;
+                    continue;
+                }
+                break;
+            case NORM_PATH:
+                out[i++] = *p;
+                if (*p == '/') {
+                    while (*p == '/') ++p;
+                    continue;
+                }
+                if (*p == '%') {
+                    stage = NORM_ESCAPED;
+                }
+                break;
+            case NORM_ESCAPED:
+                out[i++] = toupper(*(p++));
+                out[i++] = toupper(*(p++));
+                stage = NORM_PATH;
+                continue;
+        }
+        ++p;
+    }
+    out[i] = '\0';
     return 0;
 }

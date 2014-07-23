@@ -16,6 +16,7 @@
 
 #include "gfal_dropbox.h"
 #include "gfal_dropbox_oauth.h"
+#include "gfal_dropbox_url.h"
 #include <curl/curl.h>
 #include <openssl/bio.h>
 #include <openssl/buffer.h>
@@ -207,18 +208,24 @@ static unsigned base64_encode(const char* input, unsigned length, char* output, 
 }
 
 
-unsigned oauth_get_basestring(const char* method, const char* url, const char* norm_params, char* output, size_t outsize)
+int oauth_get_basestring(const char* method, const char* url, const char* norm_params, char* output, size_t outsize)
 {
     g_assert(method != NULL && url != NULL && norm_params != NULL && output != NULL);
 
-    char* escaped_url = curl_easy_escape(NULL, url, 0);
+    char normalized_url[GFAL_URL_MAX_LEN];
+    if (gfal2_dropbox_normalize_url(url, normalized_url, sizeof(normalized_url)) < 0)
+        return -1;
+
+    gfal_log(GFAL_VERBOSE_VERBOSE, "%s", normalized_url);
+
+    char* escaped_url = curl_easy_escape(NULL, normalized_url, 0);
     char* escaped_params = curl_easy_escape(NULL, norm_params, 0);
 
-    unsigned payload_size = snprintf(output, outsize, "%s&%s&%s", method, escaped_url, escaped_params);
+    int basestring_len = snprintf(output, outsize, "%s&%s&%s", method, escaped_url, escaped_params);
 
     curl_free(escaped_url);
     curl_free(escaped_params);
-    return payload_size;
+    return basestring_len;
 }
 
 
@@ -235,7 +242,9 @@ int oauth_get_signature(const char* method, const char* url, const char* norm_pa
     char *escaped_token_secret = curl_easy_escape(NULL, oauth->access_token_secret, 0);
     unsigned key_size = snprintf(key_buffer, sizeof(key_buffer), "%s&%s", escaped_app_secret, escaped_token_secret);
 
-    size_t payload_size = oauth_get_basestring(method, url, norm_params, payload, sizeof(payload));
+    int basestring_len = oauth_get_basestring(method, url, norm_params, payload, sizeof(payload));
+    if (basestring_len < 0)
+        return -1;
 
     curl_free(escaped_app_secret);
     curl_free(escaped_token_secret);
@@ -245,7 +254,7 @@ int oauth_get_signature(const char* method, const char* url, const char* norm_pa
     char buffer[2048];
     unsigned outl = 0;
     HMAC(EVP_sha1(), key_buffer, key_size,
-            (const unsigned char*)payload, payload_size,
+            (const unsigned char*)payload, basestring_len,
             (unsigned char*)buffer, &outl);
 
     base64_encode(buffer, outl, output, outsize);
@@ -263,7 +272,8 @@ int oauth_get_header(char* buffer, size_t buffer_size, const OAuth* oauth,
     char signature[1024];
 
     oauth_normalized_parameters_v(normalized, sizeof(normalized), oauth, n_args, args);
-    oauth_get_signature(method, url, normalized, oauth, signature, sizeof(signature));
+    if (oauth_get_signature(method, url, normalized, oauth, signature, sizeof(signature)) < 0)
+        return -1;
 
     return snprintf(buffer, buffer_size,
             "Authorization: OAuth oauth_version=\"1.0\", oauth_signature_method=\"HMAC-SHA1\", "
