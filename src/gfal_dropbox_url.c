@@ -42,7 +42,7 @@ char* gfal2_dropbox_extract_path(const char* url, char* output, size_t output_si
     // We are now pointing to the host, so jump to the first /
     p = strchr(p, '/');
     if (!p)
-        return NULL;
+        return g_stpncpy(output, "/", output_size);
     return g_stpncpy(output, p, output_size);
 }
 
