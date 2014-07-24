@@ -98,7 +98,7 @@ int gfal2_dropbox_mkdir(plugin_handle plugin_data, const char* url, mode_t mode,
     }
 
     char path[GFAL_URL_MAX_LEN];
-    if (gfal2_dropbox_extract_path(url, path, sizeof(path)) < 0) {
+    if (gfal2_dropbox_extract_path(url, path, sizeof(path)) == NULL) {
         gfal2_set_error(error, dropbox_domain(), EINVAL, __func__, "Invalid Dropbox url");
         return -1;
     }
@@ -137,7 +137,7 @@ int gfal2_dropbox_unlink(plugin_handle plugin_data, const char* url,
     }
 
     char path[GFAL_URL_MAX_LEN];
-    if (gfal2_dropbox_extract_path(url, path, sizeof(path)) < 0) {
+    if (gfal2_dropbox_extract_path(url, path, sizeof(path)) == NULL) {
         gfal2_set_error(error, dropbox_domain(), EINVAL, __func__, "Invalid Dropbox url");
         return -1;
     }
@@ -169,13 +169,13 @@ int gfal2_dropbox_rename(plugin_handle plugin_data, const char * oldurl,
     }
 
     char from_path[GFAL_URL_MAX_LEN];
-    if (gfal2_dropbox_extract_path(oldurl, from_path, sizeof(from_path)) < 0) {
+    if (gfal2_dropbox_extract_path(oldurl, from_path, sizeof(from_path))  == NULL) {
         gfal2_set_error(error, dropbox_domain(), EINVAL, __func__, "Invalid Dropbox url");
         return -1;
     }
 
     char to_path[GFAL_URL_MAX_LEN];
-    if (gfal2_dropbox_extract_path(urlnew, to_path, sizeof(to_path)) < 0) {
+    if (gfal2_dropbox_extract_path(urlnew, to_path, sizeof(to_path)) == NULL) {
         gfal2_set_error(error, dropbox_domain(), EINVAL, __func__, "Invalid Dropbox url");
         return -1;
     }
