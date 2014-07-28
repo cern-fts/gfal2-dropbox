@@ -27,7 +27,7 @@
 
 
 struct DropboxDir {
-    json_object* root;
+    struct json_object* root;
     struct array_list* contents;
     int content_lenght;
     int i;
