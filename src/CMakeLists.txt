@@ -1,5 +1,9 @@
 cmake_minimum_required (VERSION 2.6)
 
+# json-c pkgconfig is installed under /lib64 instead of /usr/lib64
+# https://bugzilla.redhat.com/show_bug.cgi?id=1158842
+set (ENV{PKG_CONFIG_PATH} "$ENV{PKG_CONFIG_PATH}:/lib64/pkgconfig:/lib/pkgconfig")
+
 pkg_check_modules (GFAL2_PKG REQUIRED gfal2>=2.7.0)
 pkg_check_modules (GLIB2_PKG REQUIRED glib-2.0)
 pkg_check_modules (CURL_PKG REQUIRED libcurl)
