@@ -152,7 +152,8 @@ ssize_t gfal2_dropbox_fwrite(plugin_handle plugin_data, gfal_file_handle fd,
     }
     else if (!io_handler->got_upload_id) {
         json_object* response = json_tokener_parse(output);
-        json_object* up_id = json_object_object_get(response, "upload_id");
+        json_object* up_id = NULL;
+        json_object_object_get_ex(response, "upload_id", &up_id);
         if (up_id) {
             g_strlcpy(io_handler->upload_id, json_object_get_string(up_id), sizeof(io_handler->upload_id));
             io_handler->got_upload_id = 1;

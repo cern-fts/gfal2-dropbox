@@ -67,7 +67,8 @@ gfal_file_handle gfal2_dropbox_opendir(plugin_handle plugin_data,
         if (root) {
             DropboxDir* dir_handle = calloc(1, sizeof(DropboxDir));
             dir_handle->root = root;
-            json_object* contents = json_object_object_get(root, "contents");
+            json_object* contents = NULL;
+            json_object_object_get_ex(root, "contents", &contents);
 
             if (contents && json_object_is_type(contents, json_type_array)) {
                 dir_handle->contents = json_object_get_array(contents);
@@ -120,8 +121,8 @@ struct dirent* gfal2_dropbox_readdirpp(plugin_handle plugin_data,
 
     json_object* entry = (json_object*)array_list_get_idx(dir_handle->contents, dir_handle->i++);
 
-    json_object* aux = json_object_object_get(entry, "path");
-    if (aux) {
+    json_object* aux = NULL;
+    if (json_object_object_get_ex(entry, "path", &aux) && aux) {
         const char* path = json_object_get_string(aux);
         const char* fname = strrchr(path, '/');
         if (fname)
@@ -133,16 +134,13 @@ struct dirent* gfal2_dropbox_readdirpp(plugin_handle plugin_data,
     }
 
     st->st_mode = 0700;
-    aux = json_object_object_get(entry, "is_dir");
-    if (aux && json_object_get_boolean(aux))
+    if (json_object_object_get_ex(entry, "is_dir", &aux) && aux && json_object_get_boolean(aux))
         st->st_mode |= S_IFDIR;
 
-    aux = json_object_object_get(entry, "bytes");
-    if (aux)
+    if (json_object_object_get_ex(entry, "bytes", &aux) && aux)
         st->st_size = json_object_get_int64(aux);
 
-    aux = json_object_object_get(entry, "modified");
-    if (aux)
+    if (json_object_object_get_ex(entry, "modified", &aux) && aux)
         st->st_mtime = _dropbox_time(json_object_get_string(aux));
 
     return &dir_handle->ent;

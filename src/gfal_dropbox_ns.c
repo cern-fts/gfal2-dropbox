@@ -46,20 +46,18 @@ int gfal2_dropbox_stat(plugin_handle plugin_data, const char* url,
             memset(buf, 0, sizeof(struct stat));
             buf->st_mode = 0700;
 
-            json_object* aux = json_object_object_get(stat, "is_deleted");
+            json_object* aux = NULL;
+            json_object_object_get_ex(stat, "is_deleted", &aux);
             if (aux && json_object_get_boolean(aux)) {
                 gfal2_set_error(error, dropbox_domain(), ENOENT, __func__,
                            "The entry has been deleted");
                 return -1;
             }
 
-            aux = json_object_object_get(stat, "is_dir");
-
-            if (aux && json_object_get_boolean(aux))
+            if (json_object_object_get_ex(stat, "is_dir", &aux) && aux && json_object_get_boolean(aux))
                 buf->st_mode |= S_IFDIR;
 
-            aux = json_object_object_get(stat, "bytes");
-            if (aux)
+            if (json_object_object_get_ex(stat, "bytes", &aux) && aux)
                 buf->st_size = json_object_get_int64(aux);
 
             json_object_put(stat);
