@@ -7,6 +7,8 @@ set (VERSION_MINOR 0)
 set (VERSION_PATCH 1)
 set (VERSION_STRING ${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH})
 
+add_definitions(-DVERSION="${VERSION_STRING}")
+
 set (CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/modules/")
 
 include (DefineInstallationPaths REQUIRED)

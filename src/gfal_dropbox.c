@@ -31,7 +31,7 @@ const GQuark dropbox_domain() {
 // Plugin unique name
 const char* gfal2_dropbox_getName()
 {
-    return "dropbox";
+    return GFAL2_PLUGIN_VERSIONED("dropbox", VERSION);
 }
 
 
