@@ -216,7 +216,7 @@ int oauth_get_basestring(const char* method, const char* url, const char* norm_p
     if (gfal2_dropbox_normalize_url(url, normalized_url, sizeof(normalized_url)) < 0)
         return -1;
 
-    gfal_log(GFAL_VERBOSE_VERBOSE, "%s", normalized_url);
+    gfal2_log(G_LOG_LEVEL_INFO, "%s", normalized_url);
 
     char* escaped_url = curl_easy_escape(NULL, normalized_url, 0);
     char* escaped_params = curl_easy_escape(NULL, norm_params, 0);
@@ -249,7 +249,7 @@ int oauth_get_signature(const char* method, const char* url, const char* norm_pa
     curl_free(escaped_app_secret);
     curl_free(escaped_token_secret);
 
-    gfal_log(GFAL_VERBOSE_DEBUG, "Signing %s", payload);
+    gfal2_log(G_LOG_LEVEL_DEBUG, "Signing %s", payload);
 
     char buffer[2048];
     unsigned outl = 0;

@@ -141,7 +141,7 @@ static ssize_t gfal2_dropbox_perform_v(DropboxHandle* dropbox,
     }
 
     // Do!
-    gfal_log(GFAL_VERBOSE_VERBOSE, "%s %s", method_str(method), url);
+    gfal2_log(G_LOG_LEVEL_INFO, "%s %s", method_str(method), url);
     curl_easy_setopt(dropbox->curl_handle, CURLOPT_HTTPHEADER, headers);
     int perform_result = curl_easy_perform(dropbox->curl_handle);
 

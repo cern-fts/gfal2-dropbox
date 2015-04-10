@@ -72,23 +72,23 @@ static int gfal2_dropbox_debug_callback(CURL *handle, curl_infotype type,
     switch (type) {
         case CURLINFO_TEXT:
             snprintf(msg_fmt, sizeof(msg_fmt), "INFO: %%.%zds", size - 1); // Mute \n
-            gfal_log(GFAL_VERBOSE_VERBOSE, msg_fmt, data);
+            gfal2_log(G_LOG_LEVEL_DEBUG, msg_fmt, data);
             break;
         case CURLINFO_HEADER_IN:
             snprintf(msg_fmt, sizeof(msg_fmt), "HEADER IN: %%.%zds", size - 2); // Mute \n\r
-            gfal_log(GFAL_VERBOSE_DEBUG, msg_fmt, data);
+            gfal2_log(G_LOG_LEVEL_DEBUG, msg_fmt, data);
             break;
         case CURLINFO_HEADER_OUT:
             snprintf(msg_fmt, sizeof(msg_fmt), "HEADER OUT: %%.%zds", size - 2); // Mute \n\r
-            gfal_log(GFAL_VERBOSE_DEBUG, msg_fmt, data);
+            gfal2_log(G_LOG_LEVEL_DEBUG, msg_fmt, data);
             break;
         case CURLINFO_DATA_IN:
             snprintf(msg_fmt, sizeof(msg_fmt), "DATA IN: %%.%zds", size);
-            //gfal_log(GFAL_VERBOSE_TRACE, msg_fmt, data);
+            //gfal2_log(G_LOG_LEVEL_DEBUG, msg_fmt, data);
             break;
         case CURLINFO_DATA_OUT:
             snprintf(msg_fmt, sizeof(msg_fmt), "DATA OUT: %%.%zds", size);
-            gfal_log(GFAL_VERBOSE_TRACE, msg_fmt, data);
+            gfal2_log(G_LOG_LEVEL_DEBUG, msg_fmt, data);
             break;
         default:
             break;
