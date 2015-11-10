@@ -79,7 +79,7 @@ static ssize_t gfal2_dropbox_perform_v(DropboxHandle* dropbox,
     // OAuth
     if (oauth_setup(dropbox->gfal2_context, &oauth, &tmp_err) < 0) {
         gfal2_propagate_prefixed_error(error, tmp_err, __func__);
-        return -1;
+        goto fail;
     }
 
     char authorization_buffer[1024];
@@ -89,7 +89,7 @@ static ssize_t gfal2_dropbox_perform_v(DropboxHandle* dropbox,
     va_end(oauth_args);
     if (r < 0) {
         gfal2_set_error(error, dropbox_domain(), ENOBUFS, __func__, "Could not generate the OAuth header");
-        return -1;
+        goto fail;
     }
 
     headers = curl_slist_append(headers, authorization_buffer);
@@ -153,17 +153,22 @@ static ssize_t gfal2_dropbox_perform_v(DropboxHandle* dropbox,
 
     if (perform_result != 0) {
         gfal2_set_error(error, dropbox_domain(), EIO, __func__, "%s", err_buffer);
-        return -1;
+        goto fail;
     }
 
     long response;
     curl_easy_getinfo(dropbox->curl_handle, CURLINFO_RESPONSE_CODE, &response);
     if (gfal2_dropbox_map_http_status(response, error, __func__) < 0)
-        return -1;
+        goto fail;
 
     double total_size;
     curl_easy_getinfo(dropbox->curl_handle, CURLINFO_SIZE_DOWNLOAD, &total_size);
+    oauth_release(&oauth);
     return (ssize_t)(total_size);
+
+fail:
+    oauth_release(&oauth);
+    return -1;
 }
 
 
