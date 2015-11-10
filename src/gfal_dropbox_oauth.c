@@ -35,25 +35,35 @@ int oauth_setup(gfal2_context_t context, OAuth* oauth, GError** error)
 {
     g_assert(context != NULL && oauth != NULL && error != NULL);
 
+    oauth->version = gfal2_get_opt_integer_with_default(context, "DROPBOX", "OAUTH", 1);
     oauth->app_key = gfal2_get_opt_string(context, "DROPBOX", "APP_KEY", NULL);
     oauth->access_token = gfal2_get_opt_string(context, "DROPBOX", "ACCESS_TOKEN", NULL);
     oauth->app_secret = gfal2_get_opt_string(context, "DROPBOX", "APP_SECRET", NULL);
     oauth->access_token_secret = gfal2_get_opt_string(context, "DROPBOX", "ACCESS_TOKEN_SECRET", NULL);
 
-    if (!oauth->app_key || !oauth->access_token || !oauth->app_secret || !oauth->access_token_secret) {
-        gfal2_set_error(error, dropbox_domain(), EINVAL, __func__,
-                "Missing OAuth values. Make sure you pass APP_KEY, APP_SECRET, ACCESS_TOKEN and ACCESS_TOKEN_SECRET inside the group DROPBOX");
-
-        if (oauth->app_key)
-            g_free(oauth->app_key);
-        if (oauth->access_token)
-            g_free(oauth->access_token);
-        if (oauth->app_secret)
-            g_free(oauth->app_secret);
-        if (oauth->access_token_secret)
-            g_free(oauth->access_token_secret);
-
-        return -1;
+    switch (oauth->version) {
+        case 1:
+            if (!oauth->app_key || !oauth->access_token || !oauth->app_secret || !oauth->access_token_secret) {
+                gfal2_set_error(error, dropbox_domain(), EINVAL, __func__,
+                                "Missing OAuth values. Make sure you pass APP_KEY, APP_SECRET, ACCESS_TOKEN and ACCESS_TOKEN_SECRET inside the group DROPBOX");
+                oauth_release(oauth);
+                return -1;
+            }
+            break;
+        case 2:
+            if (!oauth->app_key || !oauth->access_token || !oauth->app_secret) {
+                gfal2_set_error(error, dropbox_domain(), EINVAL, __func__,
+                                "Missing OAuth values. Make sure you pass APP_KEY, APP_SECRET and ACCESS_TOKEN inside "
+                                "the group DROPBOX");
+                oauth_release(oauth);
+                return -1;
+            }
+            break;
+        default:
+            gfal2_set_error(error, dropbox_domain(), EINVAL, __func__,
+                "Invalid OAuth version (%d)", oauth->version);
+            oauth_release(oauth);
+            return -1;
     }
 
     char aux_buffer[512];
@@ -263,7 +273,7 @@ int oauth_get_signature(const char* method, const char* url, const char* norm_pa
 }
 
 
-int oauth_get_header(char* buffer, size_t buffer_size, const OAuth* oauth,
+static int oauth1_get_header(char* buffer, size_t buffer_size, const OAuth* oauth,
         const char* method, const char* url, size_t n_args, va_list args)
 {
     g_assert(buffer != NULL && oauth != NULL && method != NULL && url != NULL);
@@ -276,9 +286,31 @@ int oauth_get_header(char* buffer, size_t buffer_size, const OAuth* oauth,
         return -1;
 
     return snprintf(buffer, buffer_size,
-            "Authorization: OAuth oauth_version=\"1.0\", oauth_signature_method=\"HMAC-SHA1\", "
-            "oauth_nonce=\"%s\", oauth_timestamp=\"%s\", "
-            "oauth_consumer_key=\"%s\", oauth_token=\"%s\", oauth_signature=\"%s\"",
-            oauth->nonce, oauth->timestamp, oauth->app_key, oauth->access_token, signature
+                    "Authorization: OAuth oauth_version=\"1.0\", oauth_signature_method=\"HMAC-SHA1\", "
+                            "oauth_nonce=\"%s\", oauth_timestamp=\"%s\", "
+                            "oauth_consumer_key=\"%s\", oauth_token=\"%s\", oauth_signature=\"%s\"",
+                    oauth->nonce, oauth->timestamp, oauth->app_key, oauth->access_token, signature
     );
+}
+
+
+static int oauth2_get_header(char* buffer, size_t buffer_size, const OAuth* oauth,
+    const char* method, const char* url, size_t n_args, va_list args)
+{
+    g_assert(buffer != NULL && oauth != NULL && method != NULL && url != NULL);
+
+    return snprintf(buffer, buffer_size, "Authorization: Bearer %s", oauth->access_token);
+}
+
+
+int oauth_get_header(char* buffer, size_t buffer_size, const OAuth* oauth,
+        const char* method, const char* url, size_t n_args, va_list args)
+{
+    g_assert(oauth != NULL);
+    g_assert(oauth->version == 1 || oauth->version == 2);
+
+    if (oauth->version == 1)
+        return oauth1_get_header(buffer, buffer_size, oauth, method, url, n_args, args);
+    else
+        return oauth2_get_header(buffer, buffer_size, oauth, method, url, n_args, args);
 }

@@ -24,6 +24,7 @@
 
 // Struct to hold the OAuth parameters
 struct OAuth {
+    unsigned version;
     char* app_key;
     char* access_token;
     char* app_secret;
