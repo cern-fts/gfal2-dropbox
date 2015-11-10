@@ -86,6 +86,8 @@ void oauth_release(OAuth* oauth)
     g_free(oauth->access_token_secret);
     g_free(oauth->timestamp);
     g_free(oauth->nonce);
+
+    memset(oauth, 0, sizeof(OAuth));
 }
 
 
