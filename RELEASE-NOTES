@@ -1,0 +1,12 @@
+RELEASE-NOTES
+=============
+
+## Tue Aug 16 2016 Alejandro Alvarez <aalvarez at cern.ch> - 0.1
+### New Feature
+- [DMC-663] - Add functionality to allow querying the versions of the plugins loaded
+### Task
+- [DMC-426] - Start Dropbox plugin for gfal2
+### Improvement
+- [DMC-457] - Use HMAC-SHA1 to sign the request 
+- [DMC-461] - Normalize URL when signing
+
