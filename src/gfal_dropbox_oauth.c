@@ -22,7 +22,6 @@
 #include <openssl/buffer.h>
 #include <openssl/hmac.h>
 #include <string.h>
-#include <common/gfal_common_err_helpers.h>
 
 
 struct KeyValue {

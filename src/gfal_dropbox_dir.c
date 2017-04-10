@@ -20,7 +20,6 @@
 #include "gfal_dropbox_requests.h"
 #include "gfal_dropbox_url.h"
 #include <logger/gfal_logger.h>
-#include <common/gfal_common_err_helpers.h>
 #include <json.h>
 #include <string.h>
 #include <time.h>

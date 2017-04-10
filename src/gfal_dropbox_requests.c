@@ -17,7 +17,6 @@
 #include "gfal_dropbox_requests.h"
 #include "gfal_dropbox_url.h"
 #include "gfal_dropbox_oauth.h"
-#include <common/gfal_common_err_helpers.h>
 #include <stdarg.h>
 #include <string.h>
 
