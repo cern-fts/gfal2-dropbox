@@ -2,7 +2,7 @@
 %{!?_pkgdocdir: %global _pkgdocdir %{_docdir}/%{name}-%{version}}
 
 Name:           gfal2-plugin-dropbox
-Version:        0.1.0
+Version:        0.1.1
 Release:        1%{?dist}
 Summary:        Provide Dropbox support for GFAL2
 

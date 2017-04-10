@@ -1,6 +1,9 @@
 RELEASE-NOTES
 =============
 
+## Mon Apr 10 2017 Alejandro Alvarez <aalvarez at cern.ch> - 0.1.1
+- Build with latest gfal2
+
 ## Tue Aug 16 2016 Alejandro Alvarez <aalvarez at cern.ch> - 0.1
 ### New Feature
 - [DMC-663] - Add functionality to allow querying the versions of the plugins loaded
