@@ -29,46 +29,70 @@ int gfal2_dropbox_stat(plugin_handle plugin_data, const char* url,
     DropboxHandle* dropbox = (DropboxHandle*)plugin_data;
     GError* tmp_err = NULL;
 
-    char url_buffer[GFAL_URL_MAX_LEN];
-    gfal2_dropbox_build_url("https://api.dropbox.com/1/metadata/auto", url,
-            url_buffer, sizeof(url_buffer), &tmp_err);
-    if (tmp_err) {
+    char path[GFAL_URL_MAX_LEN];
+    if (gfal2_dropbox_extract_path(url, path, sizeof(path)) == NULL) {
+        gfal2_set_error(error, dropbox_domain(), EINVAL, __func__, "Invalid Dropbox url");
+        return -1;
+    }
+
+    // Handle root ourselves, since Dropbox will say it is not supported
+    if (g_strcmp0(path, "/") == 0) {
+        buf->st_mode = 0700 | S_IFDIR;
+        return 0;
+    }
+
+    char output[1024];
+
+    ssize_t resp_size = gfal2_dropbox_post_json(dropbox, "https://api.dropbox.com/2/files/get_metadata",
+        output, sizeof(output), &tmp_err, 1,
+        "path", path);
+    if (resp_size < 0) {
         gfal2_propagate_prefixed_error(error, tmp_err, __func__);
         return -1;
     }
 
-    char buffer[1024];
-    ssize_t ret = gfal2_dropbox_get(dropbox, url_buffer, buffer, sizeof(buffer), &tmp_err, 1, "list", "false");
-    if (ret > 0) {
-        json_object* stat = json_tokener_parse(buffer);
-        if (stat) {
-            memset(buf, 0, sizeof(struct stat));
-            buf->st_mode = 0700;
+    json_object* stat = json_tokener_parse(output);
+    if (stat) {
+        memset(buf, 0, sizeof(struct stat));
+        buf->st_mode = 0700;
 
-            json_object* aux = NULL;
-            json_object_object_get_ex(stat, "is_deleted", &aux);
-            if (aux && json_object_get_boolean(aux)) {
-                gfal2_set_error(error, dropbox_domain(), ENOENT, __func__,
-                           "The entry has been deleted");
-                return -1;
-            }
+        json_object* tag = NULL;
+        if (json_object_object_get_ex(stat, ".tag", &tag)) {
+            const char *tag_str = json_object_get_string(tag);
 
-            if (json_object_object_get_ex(stat, "is_dir", &aux) && aux && json_object_get_boolean(aux))
+            if (g_strcmp0(tag_str, "folder") == 0) {
                 buf->st_mode |= S_IFDIR;
+            }
+            else if (g_strcmp0(tag_str, "file") == 0) {
+                json_object *size = NULL;
+                if (json_object_object_get_ex(stat, "size", &size)) {
+                    buf->st_size = json_object_get_int64(size);
+                }
 
-            if (json_object_object_get_ex(stat, "bytes", &aux) && aux)
-                buf->st_size = json_object_get_int64(aux);
-
-            json_object_put(stat);
+                json_object *modified = NULL;
+                if (json_object_object_get_ex(stat, "client_modified", &modified)) {
+                    const char *time_str = json_object_get_string(modified);
+                    buf->st_atime = buf->st_mtime = buf->st_ctime = gfal2_dropbox_time(time_str);
+                }
+            }
+            else if (g_strcmp0(tag_str, "deleted") == 0) {
+                gfal2_set_error(error, dropbox_domain(), ENOENT, __func__, "The entry has been deleted");
+            }
+            else {
+                gfal2_set_error(error, dropbox_domain(), EIO, __func__, "Unsupported .tag: %s", tag_str);
+            }
         }
         else {
-            gfal2_set_error(error, dropbox_domain(), EIO, __func__,
-                    "Could not parse the response sent by Dropbox");
+            gfal2_set_error(error, dropbox_domain(), EIO, __func__, "Could not find .tag");
         }
+
+        json_object_put(stat);
     }
     else {
-        gfal2_propagate_prefixed_error(error, tmp_err, __func__);
+        gfal2_set_error(error, dropbox_domain(), EIO, __func__,
+                "Could not parse the response sent by Dropbox");
     }
+
     return *error?-1:0;
 }
 
@@ -101,10 +125,10 @@ int gfal2_dropbox_mkdir(plugin_handle plugin_data, const char* url, mode_t mode,
     }
 
     char output[1024];
-    ssize_t resp_size = gfal2_dropbox_post(dropbox,
-            "https://api.dropbox.com/1/fileops/create_folder",
-            output, sizeof(output), &tmp_err,
-            2, "root", "auto", "path", path);
+    ssize_t resp_size = gfal2_dropbox_post_json(dropbox,
+        "https://api.dropboxapi.com/2/files/create_folder_v2",
+        output, sizeof(output), &tmp_err,
+        1, "path", path);
     if (resp_size < 0) {
         gfal2_propagate_prefixed_error(error, tmp_err, __func__);
         return -1;
@@ -140,10 +164,10 @@ int gfal2_dropbox_unlink(plugin_handle plugin_data, const char* url,
     }
 
     char output[1024];
-    ssize_t resp_size = gfal2_dropbox_post(dropbox,
-            "https://api.dropbox.com/1/fileops/delete",
-            output, sizeof(output), &tmp_err,
-            2, "root", "auto", "path", path);
+    ssize_t resp_size = gfal2_dropbox_post_json(dropbox,
+        "https://api.dropboxapi.com/2/files/delete_v2",
+        output, sizeof(output), &tmp_err,
+        1, "path", path);
     if (resp_size < 0) {
         gfal2_propagate_prefixed_error(error, tmp_err, __func__);
         return -1;
@@ -178,10 +202,10 @@ int gfal2_dropbox_rename(plugin_handle plugin_data, const char * oldurl,
     }
 
     char output[1024];
-    ssize_t resp_size = gfal2_dropbox_post(dropbox,
-            "https://api.dropbox.com/1/fileops/move",
-            output, sizeof(output), &tmp_err,
-            2, "from_path", from_path, "to_path", to_path);
+    ssize_t resp_size = gfal2_dropbox_post_json(dropbox,
+        "https://api.dropboxapi.com/2/files/move_v2",
+        output, sizeof(output), &tmp_err,
+        2, "from_path", from_path, "to_path", to_path);
     if (resp_size < 0) {
         gfal2_propagate_prefixed_error(error, tmp_err, __func__);
         return -1;

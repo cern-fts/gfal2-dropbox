@@ -22,36 +22,32 @@
 
 #include "gfal_dropbox.h"
 
+enum Method {
+    M_GET,
+    M_POST,
+    M_PUT
+};
+typedef enum Method Method;
+
 /// These methods take care of setting the OAuth headers!
 
-// Do the request, put the output in output
-// n_args specifies how many arguments the URL will have, and then
-// key and value must be passed separately gfal2_dropbox_get(..., 1, "list", "true)
-ssize_t gfal2_dropbox_get(DropboxHandle* dropbox,
-        const char* url, char* output, size_t output_size, GError** error,
-        size_t n_args, ...);
+// Perform the request method (GET, POST, PUT), building it with the provided headers,
+// offset, etc.
+ssize_t gfal2_dropbox_perform(DropboxHandle* dropbox,
+    Method method, const char* url,
+    off_t offset, off_t size,
+    char* output, size_t output_size,
+    const char *payload_mimetype,
+    const char* payload, size_t payload_size,
+    GError** error,
+    size_t headers_count, ...);
 
-// Request with a range header
-// n_args specifies how many arguments the URL will have, and then
-// key and value must be passed separately gfal2_dropbox_get(..., 1, "list", "true)
-ssize_t gfal2_dropbox_get_range(DropboxHandle* dropbox,
-        const char* url, off_t offset, off_t size,
-        char* output, size_t output_size, GError** error,
-        size_t n_args, ...);
 
 // Post a JSON body
 // Returns the response size
-ssize_t gfal2_dropbox_post(DropboxHandle* dropbox,
-        const char* url, char* output, size_t output_size, GError** error,
-        size_t n_args, ...);
+ssize_t gfal2_dropbox_post_json(DropboxHandle *dropbox,
+    const char *url, char *output, size_t output_size, GError **error,
+    size_t n_args, ...);
 
-// Do a PUT
-// Returns the response size
-ssize_t gfal2_dropbox_put(DropboxHandle* dropbox,
-        const char* url,
-        const char* buffer, size_t count,
-        char* payload, size_t payload_size,
-        GError** error,
-        size_t n_args, ...);
 
 #endif

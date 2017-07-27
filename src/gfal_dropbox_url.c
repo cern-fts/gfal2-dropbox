@@ -62,43 +62,6 @@ int gfal2_dropbox_build_url(const char* api_base, const char* url,
 }
 
 
-int gfal2_dropbox_concat_args(const char* url, size_t n_args, va_list args,
-        char* url_buffer, size_t bufsize)
-{
-    g_assert(url != NULL && url_buffer != NULL);
-
-    if (n_args == 0) {
-        g_strlcpy(url_buffer, url, bufsize);
-        return 0;
-    }
-
-    char* end = url_buffer + bufsize;
-    char* p = g_stpncpy(url_buffer, url, bufsize);
-    bufsize = end - p;
-    p = g_stpncpy(p, "?", bufsize);
-
-    size_t i;
-    for (i = 0; i < n_args; ++i) {
-        char* key = curl_easy_escape(NULL, va_arg(args, const char*), 0);
-        char* value = curl_easy_escape(NULL, va_arg(args, const char*), 0);
-
-        size_t printed = snprintf(p, bufsize, "%s=%s&", key, value);
-        bufsize -= printed;
-        p += printed;
-
-        curl_free(key);
-        curl_free(value);
-    }
-
-    // Truncate last &
-    --p;
-    if (*p == '&')
-        *p = '\0';
-
-    return 0;
-}
-
-
 int gfal2_dropbox_normalize_url(const char* url, char* out, size_t outsize)
 {
     enum {
@@ -156,4 +119,12 @@ int gfal2_dropbox_normalize_url(const char* url, char* out, size_t outsize)
     }
     out[i] = '\0';
     return 0;
+}
+
+
+time_t gfal2_dropbox_time(const char* stime)
+{
+    struct tm tim;
+    strptime(stime, "%Y-%m-%dT%H:%M:%S%Z", &tim);
+    return mktime(&tim);
 }

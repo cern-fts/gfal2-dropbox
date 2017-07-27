@@ -61,6 +61,6 @@ int oauth_get_signature(const char* method, const char* url, const char* norm_pa
 
 // Writes into buffer the OAuth HTTP Header
 int oauth_get_header(char* buffer, size_t buffer_size, const OAuth* oauth,
-        const char* method, const char* url, size_t n_args, va_list args);
+        const char* method, const char* url);
 
 #endif

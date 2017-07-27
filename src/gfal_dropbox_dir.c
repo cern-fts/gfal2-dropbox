@@ -27,20 +27,14 @@
 
 struct DropboxDir {
     struct json_object* root;
-    struct array_list* contents;
-    int content_lenght;
+    struct array_list* entries;
+    int entries_length;
     int i;
     struct dirent ent;
+    int has_more;
+    const char *cursor;
 };
 typedef struct DropboxDir DropboxDir;
-
-
-static time_t _dropbox_time(const char* stime)
-{
-    struct tm tim;
-    strptime(stime, "%a, %d %b %Y %H:%M:%S %z", &tim);
-    return mktime(&tim);
-}
 
 
 gfal_file_handle gfal2_dropbox_opendir(plugin_handle plugin_data,
@@ -49,45 +43,55 @@ gfal_file_handle gfal2_dropbox_opendir(plugin_handle plugin_data,
     DropboxHandle* dropbox = (DropboxHandle*)plugin_data;
     GError* tmp_err = NULL;
 
-    char url_buffer[GFAL_URL_MAX_LEN];
-    gfal2_dropbox_build_url(
-            "https://api.dropbox.com/1/metadata/auto", url,
-            url_buffer, sizeof(url_buffer), &tmp_err
-    );
-    if (tmp_err) {
+    char path[GFAL_URL_MAX_LEN];
+    if (gfal2_dropbox_extract_path(url, path, sizeof(path)) == NULL) {
+        gfal2_set_error(error, dropbox_domain(), EINVAL, __func__, "Invalid Dropbox url");
+        return NULL;
+    }
+
+    // Otherwise we get: Specify the root folder as an empty string rather than as "/".
+    if (g_strcmp0(path, "/") == 0) {
+        path[0] = '\0';
+    }
+
+    char output[102400];
+
+    ssize_t resp_size = gfal2_dropbox_post_json(dropbox, "https://api.dropbox.com/2/files/list_folder",
+        output, sizeof(output), &tmp_err, 1,
+        "path", path);
+    if (resp_size < 0) {
         gfal2_propagate_prefixed_error(error, tmp_err, __func__);
         return NULL;
     }
 
-    char buffer[102400];
-    ssize_t ret = gfal2_dropbox_get(dropbox, url_buffer, buffer, sizeof(buffer), &tmp_err, 1, "list", "true");
-    if (ret > 0) {
-        json_object* root = json_tokener_parse(buffer);
-        if (root) {
-            DropboxDir* dir_handle = calloc(1, sizeof(DropboxDir));
-            dir_handle->root = root;
-            json_object* contents = NULL;
-            json_object_object_get_ex(root, "contents", &contents);
+    json_object* root = json_tokener_parse(output);
+    if (root) {
+        DropboxDir* dir_handle = calloc(1, sizeof(DropboxDir));
+        dir_handle->root = root;
 
-            if (contents && json_object_is_type(contents, json_type_array)) {
-                dir_handle->contents = json_object_get_array(contents);
-                dir_handle->content_lenght = json_object_array_length(contents);
-                return gfal_file_handle_new2(gfal2_dropbox_getName(), dir_handle, NULL, url);
-            }
-            else {
-                json_object_put(root);
-                free(dir_handle);
-                gfal2_set_error(error, dropbox_domain(), EIO, __func__, "The response didn't include 'content'");
-            }
+        json_object *cursor = NULL, *has_more = NULL;
+        if (json_object_object_get_ex(root, "cursor", &cursor)) {
+            dir_handle->cursor = json_object_get_string(cursor);
+        }
+        if (json_object_object_get_ex(root, "has_more", &has_more)) {
+            dir_handle->has_more = json_object_get_boolean(has_more);
+        }
+
+        json_object* contents = NULL;
+        if (json_object_object_get_ex(root, "entries", &contents) && json_object_is_type(contents, json_type_array)) {
+            dir_handle->entries = json_object_get_array(contents);
+            dir_handle->entries_length = json_object_array_length(contents);
+            return gfal_file_handle_new2(gfal2_dropbox_getName(), dir_handle, NULL, url);
         }
         else {
-            gfal2_set_error(error, dropbox_domain(), EIO, __func__, "Could not parse the response sent by Dropbox");
+            json_object_put(root);
+            free(dir_handle);
+            gfal2_set_error(error, dropbox_domain(), EIO, __func__, "The response didn't include 'entries'");
         }
     }
     else {
-        gfal2_propagate_prefixed_error(error, tmp_err, __func__);
+        gfal2_set_error(error, dropbox_domain(), EIO, __func__, "Could not parse the response sent by Dropbox");
     }
-
     return NULL;
 }
 
@@ -110,37 +114,42 @@ struct dirent* gfal2_dropbox_readdir(plugin_handle plugin_data,
     return gfal2_dropbox_readdirpp(plugin_data, dir_desc, &st, error);
 }
 
-
+// TODO: Continue listing if has_more is true
 struct dirent* gfal2_dropbox_readdirpp(plugin_handle plugin_data,
         gfal_file_handle dir_desc, struct stat* st, GError** error)
 {
     DropboxDir* dir_handle = gfal_file_handle_get_fdesc(dir_desc);
-    if (dir_handle->i >= dir_handle->content_lenght)
+    if (dir_handle->i >= dir_handle->entries_length) {
         return NULL;
+    }
 
-    json_object* entry = (json_object*)array_list_get_idx(dir_handle->contents, dir_handle->i++);
+    json_object* entry = (json_object*)array_list_get_idx(dir_handle->entries, dir_handle->i++);
 
-    json_object* aux = NULL;
-    if (json_object_object_get_ex(entry, "path", &aux) && aux) {
-        const char* path = json_object_get_string(aux);
-        const char* fname = strrchr(path, '/');
-        if (fname)
-            fname++;
-        else
-            fname = path;
-        g_strlcpy(dir_handle->ent.d_name, fname, sizeof(dir_handle->ent.d_name));
+    json_object* name = NULL;
+    if (json_object_object_get_ex(entry, "name", &name)) {
+        const char* name_str = json_object_get_string(name);
+        g_strlcpy(dir_handle->ent.d_name, name_str, sizeof(dir_handle->ent.d_name));
         dir_handle->ent.d_reclen = strlen(dir_handle->ent.d_name);
     }
 
     st->st_mode = 0700;
-    if (json_object_object_get_ex(entry, "is_dir", &aux) && aux && json_object_get_boolean(aux))
-        st->st_mode |= S_IFDIR;
 
-    if (json_object_object_get_ex(entry, "bytes", &aux) && aux)
-        st->st_size = json_object_get_int64(aux);
+    json_object *tag = NULL, *size = NULL, *modified = NULL;
 
-    if (json_object_object_get_ex(entry, "modified", &aux) && aux)
-        st->st_mtime = _dropbox_time(json_object_get_string(aux));
+    if (json_object_object_get_ex(entry, ".tag", &tag)) {
+        const char *tag_str = json_object_get_string(tag);
+        if (g_strcmp0(tag_str, "folder") == 0) {
+            st->st_mode |= S_IFDIR;
+        }
+    }
+
+    if (json_object_object_get_ex(entry, "size", &size)) {
+        st->st_size = json_object_get_int64(size);
+    }
+
+    if (json_object_object_get_ex(entry, "client_modified", &modified)) {
+        st->st_mtime = gfal2_dropbox_time(json_object_get_string(modified));
+    }
 
     return &dir_handle->ent;
 }
