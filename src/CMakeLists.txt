@@ -37,7 +37,7 @@ target_link_libraries (gfal_plugin_dropbox
 
 install (
     TARGETS gfal_plugin_dropbox
-    LIBRARY DESTINATION ${PLUGIN_INSTALL_DIR}
+    LIBRARY DESTINATION ${GFAL2_PLUGIN_INSTALL_DIR}
 )
 
 add_subdirectory (tests)
