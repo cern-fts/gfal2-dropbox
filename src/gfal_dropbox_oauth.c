@@ -274,29 +274,8 @@ int oauth_get_signature(const char* method, const char* url, const char* norm_pa
 }
 
 
-static int oauth1_get_header(char* buffer, size_t buffer_size, const OAuth* oauth,
-        const char* method, const char* url, size_t n_args, va_list args)
-{
-    g_assert(buffer != NULL && oauth != NULL && method != NULL && url != NULL);
-
-    char normalized[1024];
-    char signature[1024];
-
-    oauth_normalized_parameters_v(normalized, sizeof(normalized), oauth, n_args, args);
-    if (oauth_get_signature(method, url, normalized, oauth, signature, sizeof(signature)) < 0)
-        return -1;
-
-    return snprintf(buffer, buffer_size,
-                    "Authorization: OAuth oauth_version=\"1.0\", oauth_signature_method=\"HMAC-SHA1\", "
-                            "oauth_nonce=\"%s\", oauth_timestamp=\"%s\", "
-                            "oauth_consumer_key=\"%s\", oauth_token=\"%s\", oauth_signature=\"%s\"",
-                    oauth->nonce, oauth->timestamp, oauth->app_key, oauth->access_token, signature
-    );
-}
-
-
 static int oauth2_get_header(char* buffer, size_t buffer_size, const OAuth* oauth,
-    const char* method, const char* url, size_t n_args, va_list args)
+    const char* method, const char* url)
 {
     g_assert(buffer != NULL && oauth != NULL && method != NULL && url != NULL);
 
@@ -305,13 +284,10 @@ static int oauth2_get_header(char* buffer, size_t buffer_size, const OAuth* oaut
 
 
 int oauth_get_header(char* buffer, size_t buffer_size, const OAuth* oauth,
-        const char* method, const char* url, size_t n_args, va_list args)
+        const char* method, const char* url)
 {
     g_assert(oauth != NULL);
-    g_assert(oauth->version == 1 || oauth->version == 2);
+    g_assert(oauth->version == 2);
 
-    if (oauth->version == 1)
-        return oauth1_get_header(buffer, buffer_size, oauth, method, url, n_args, args);
-    else
-        return oauth2_get_header(buffer, buffer_size, oauth, method, url, n_args, args);
+    return oauth2_get_header(buffer, buffer_size, oauth, method, url);
 }

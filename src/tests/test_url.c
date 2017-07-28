@@ -51,35 +51,6 @@ void test_build_url()
 }
 
 
-static int gfal2_dropbox_concat_args_wrap(const char* url, char* buffer, size_t bufsize, size_t n_args, ...)
-{
-    va_list args;
-    va_start(args, n_args);
-    int r = gfal2_dropbox_concat_args(url, n_args, args, buffer, bufsize);
-    va_end(args);
-    return r;
-}
-
-
-void test_concat_args()
-{
-    char buffer[1024];
-
-    gfal2_dropbox_concat_args_wrap("https://api.dropbox.com/base/my/path", buffer, sizeof(buffer), 0);
-    ASSERT_STR_EQ("https://api.dropbox.com/base/my/path", buffer);
-
-    gfal2_dropbox_concat_args_wrap("https://api.dropbox.com/base/my/path",
-            buffer, sizeof(buffer), 1, "key", "value");
-    ASSERT_STR_EQ("https://api.dropbox.com/base/my/path?key=value", buffer);
-
-    gfal2_dropbox_concat_args_wrap("https://api.dropbox.com/base/my/path",
-            buffer, sizeof(buffer), 2, "key", "value", "something", "else");
-    ASSERT_STR_EQ("https://api.dropbox.com/base/my/path?key=value&something=else", buffer);
-
-    printf("Concat args OK\n");
-}
-
-
 void test_normalize_url()
 {
     char buffer[1024];
@@ -96,7 +67,6 @@ int main(int argc, char** argv)
 {
     test_extract_path();
     test_build_url();
-    test_concat_args();
     test_normalize_url();
     return 0;
 }

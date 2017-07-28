@@ -40,3 +40,14 @@ function(STRING_APPEND var_name content)
 SET(${var_name} "${${var_name}}${content}" PARENT_SCOPE)
 
 endfunction(STRING_APPEND var_name content)
+
+function(parse_lib_path lib_link lib_directory lib_path)
+	string(REGEX REPLACE "^.*/(lib)?(.*)\\.(so|dll)"
+         "\\2" my_lib_link
+         ${lib_path})	
+	string(REGEX REPLACE "^(.*)/(lib)?(.*)\\.(so|dll)"
+         "\\1" my_lib_dir
+         ${lib_path})	
+    SET(${lib_link} ${my_lib_link} PARENT_SCOPE)
+    SET(${lib_directory} ${my_lib_dir} PARENT_SCOPE)   
+endfunction(parse_lib_path lib_link lib_directory lib_path)

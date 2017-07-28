@@ -5,15 +5,20 @@ if (UNIX)
   ENDIF (NOT APPLICATION_NAME)
 
 # Suffix for Linux
-	IF (CMAKE_SIZEOF_VOID_P EQUAL 4)
-		SET(LIB_SUFFIX ""
-		CACHE STRING "Suffix of the lib")
-		SET (PKG_ARCH "i386")
-	ELSE (CMAKE_SIZEOF_VOID_P EQUAL 4)
-		SET(LIB_SUFFIX "64"
-		CACHE STRING "Suffix of the lib")
-		SET (PKG_ARCH "x86_64")
-	ENDIF (CMAKE_SIZEOF_VOID_P EQUAL 4)
+    IF (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+        SET(LIB_SUFFIX ""
+            CACHE STRING "Suffix of the lib")
+    ELSE ()
+        IF (CMAKE_SIZEOF_VOID_P EQUAL 4)
+            SET(LIB_SUFFIX ""
+                CACHE STRING "Suffix of the lib")
+            SET (PKG_ARCH "i386")
+        ELSE (CMAKE_SIZEOF_VOID_P EQUAL 4)
+            SET(LIB_SUFFIX "64"
+                CACHE STRING "Suffix of the lib")
+            SET (PKG_ARCH "x86_64")
+        ENDIF (CMAKE_SIZEOF_VOID_P EQUAL 4)
+    ENDIF ()
 
   SET(EXEC_INSTALL_PREFIX
     "${CMAKE_INSTALL_PREFIX}"
@@ -51,9 +56,10 @@ if (UNIX)
   )
 
   SET(PLUGIN_INSTALL_DIR
-    "${LIB_INSTALL_DIR}/gfal2-plugins/"
-    CACHE PATH "The subdirectory relative to the install prefix where plugins will be installed (default is prefix/lib/${APPLICATION_NAME})"
+      "${LIB_INSTALL_DIR}/${APPLICATION_NAME}-plugins/"
+      CACHE PATH "The subdirectory relative to the install prefix where plugins will be installed (default is prefix/lib/${APPLICATION_NAME})"
   )
+  
   SET(INCLUDE_INSTALL_DIR
     "${CMAKE_INSTALL_PREFIX}/include"
     CACHE PATH "The subdirectory to the header prefix (default prefix/include)"
@@ -65,7 +71,7 @@ if (UNIX)
   )
  
   SET(DOC_INSTALL_DIR
-    "${SHARE_INSTALL_PREFIX}/doc/${APPLICATION_NAME}-${VERSION_STRING}"
+    "${SHARE_INSTALL_PREFIX}/doc/${APPLICATION_NAME}"
     CACHE PATH "The parent directory where applications can install their documentation (default prefix/share/doc/${APPLICATION_NAME})"
   )
   
@@ -97,8 +103,8 @@ if (UNIX)
   )
 
   SET(SYSCONF_INSTALL_DIR
-    "/etc"
-    CACHE PATH "The ${APPLICATION_NAME} sysconfig install dir /etc)"
+    "${EXEC_INSTALL_PREFIX}/etc"
+    CACHE PATH "The ${APPLICATION_NAME} sysconfig install dir (default prefix/etc)"
   )
   SET(MAN_INSTALL_DIR
     "${SHARE_INSTALL_PREFIX}/man"

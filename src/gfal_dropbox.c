@@ -84,7 +84,7 @@ static int gfal2_dropbox_debug_callback(CURL *handle, curl_infotype type,
             break;
         case CURLINFO_DATA_IN:
             snprintf(msg_fmt, sizeof(msg_fmt), "DATA IN: %%.%zds", size);
-            //gfal2_log(G_LOG_LEVEL_DEBUG, msg_fmt, data);
+            gfal2_log(G_LOG_LEVEL_DEBUG, msg_fmt, data);
             break;
         case CURLINFO_DATA_OUT:
             snprintf(msg_fmt, sizeof(msg_fmt), "DATA OUT: %%.%zds", size);

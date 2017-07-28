@@ -26,16 +26,10 @@
 // Returns a pointer to the NULL termination character
 char* gfal2_dropbox_extract_path(const char* url, char* output, size_t output_size);
 
-// Put into output_url the URL resulting of concatenating the api call and the url
-// Note that url will be passed to gfal2_dropbox_extract_path
-int gfal2_dropbox_build_url(const char* api_base, const char* url,
-        char* output_url, size_t output_size, GError** error);
-
-// Concatenate the arguments to the URL
-int gfal2_dropbox_concat_args(const char* url, size_t n_args, va_list args,
-        char* url_buffer, size_t bufsize);
-
 // Normalize URL
 int gfal2_dropbox_normalize_url(const char* url, char* out, size_t outsize);
+
+// Convert a string with a timestamp to a time_t
+time_t gfal2_dropbox_time(const char* stime);
 
 #endif

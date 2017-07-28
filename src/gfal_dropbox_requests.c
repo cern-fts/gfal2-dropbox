@@ -19,13 +19,18 @@
 #include "gfal_dropbox_oauth.h"
 #include <stdarg.h>
 #include <string.h>
+#include <json.h>
 
-enum Method {
-    M_GET,
-    M_POST,
-    M_PUT
+
+struct ErrorMapEntry {
+    const char *tag;
+    int errcode;
 };
-typedef enum Method Method;
+
+static const struct ErrorMapEntry ErrorMap[] = {
+    {"not_found", ENOENT},
+    {NULL, 0}
+};
 
 
 static const char* method_str(Method m)
@@ -41,23 +46,58 @@ static const char* method_str(Method m)
     return "";
 }
 
-
-static int gfal2_dropbox_map_http_status(long response, GError** error, const char* func)
+static void gfal2_dropbox_map_tag_to_errno(const char *tag, GError **error)
 {
-    if (response < 400)
-        return 0;
-    int errval = 0;
-    if (response == 400)
-        errval = EINVAL;
-    else if (response >= 401 && response <= 403)
-        errval = EACCES;
-    else if (response == 404)
-        errval = ENOENT;
-    else
-        errval = EIO;
+    int errcode = EIO;
+    int i;
+    for (i = 0; ErrorMap[i].tag != NULL; ++i) {
+        if (g_strcmp0(ErrorMap[i].tag, tag) == 0) {
+            errcode = ErrorMap[i].errcode;
+            break;
+        }
+    }
 
-    gfal2_set_error(error, dropbox_domain(), errval, func, "HTTP Response %ld", response);
-    return -1;
+    gfal2_set_error(error, dropbox_domain(), errcode, __func__, "%s", tag);
+}
+
+static void gfal2_dropbox_map_path_error(json_object *error_obj, GError **error)
+{
+    json_object *path_error = NULL;
+    json_object* tag = NULL;
+    if (json_object_object_get_ex(error_obj, "path", &path_error) &&
+        json_object_object_get_ex(path_error, ".tag", &tag)) {
+        const char *tag_str = json_object_get_string(tag);
+        gfal2_dropbox_map_tag_to_errno(tag_str, error);
+    }
+    else {
+        gfal2_set_error(error, dropbox_domain(), EINVAL, __func__,
+            "An path error happened, but failed to parse the reply");
+    }
+}
+
+
+static void gfal2_dropbox_map_error(const char *output, size_t total_size, GError **error)
+{
+    json_object *response = json_tokener_parse(output);
+
+    json_object *error_obj = NULL;
+    json_object* tag = NULL;
+
+    if (json_object_object_get_ex(response, "error", &error_obj) &&
+        json_object_object_get_ex(error_obj, ".tag", &tag)) {
+        const char *tag_str = json_object_get_string(tag);
+        if (g_strcmp0(tag_str, "path") == 0) {
+            gfal2_dropbox_map_path_error(error_obj, error);
+        }
+        else {
+            gfal2_dropbox_map_tag_to_errno(tag_str, error);
+        }
+    }
+    else {
+        gfal2_set_error(error, dropbox_domain(), EINVAL, __func__,
+            "An error happened, and couldn't parse the response");
+    }
+    json_object_put(response);
 }
 
 
@@ -65,9 +105,10 @@ static ssize_t gfal2_dropbox_perform_v(DropboxHandle* dropbox,
         Method method, const char* url,
         off_t offset, off_t size,
         char* output, size_t output_size,
+        const char *payload_mimetype,
         const char* payload, size_t payload_size,
-        GError** error,
-        size_t n_args, va_list args)
+        size_t headers_count, va_list headers_args,
+        GError** error)
 {
     g_assert(dropbox != NULL && url != NULL && output != NULL && error != NULL);
 
@@ -82,16 +123,30 @@ static ssize_t gfal2_dropbox_perform_v(DropboxHandle* dropbox,
     }
 
     char authorization_buffer[1024];
-    va_list oauth_args;
-    va_copy(oauth_args, args);
-    int r = oauth_get_header(authorization_buffer, sizeof(authorization_buffer), &oauth, method_str(method), url, n_args, oauth_args);
-    va_end(oauth_args);
+    int r = oauth_get_header(authorization_buffer, sizeof(authorization_buffer), &oauth, method_str(method), url);
     if (r < 0) {
         gfal2_set_error(error, dropbox_domain(), ENOBUFS, __func__, "Could not generate the OAuth header");
         goto fail;
     }
 
     headers = curl_slist_append(headers, authorization_buffer);
+
+    // Payload type
+    if (payload_mimetype) {
+        char type_buffer[512];
+        snprintf(type_buffer, sizeof(type_buffer), "Content-Type: %s", payload_mimetype);
+        headers = curl_slist_append(headers, type_buffer);
+    }
+
+    // Additional headers
+    size_t i;
+    for (i = 0; i < headers_count; ++i) {
+        char header_buffer[512];
+        const char *key = va_arg(headers_args, const char*);
+        const char *value = va_arg(headers_args, const char*);
+        snprintf(header_buffer, sizeof(header_buffer), "%s: %s", key, value);
+        headers = curl_slist_append(headers, header_buffer);
+    }
 
     // Follow redirection
     curl_easy_setopt(dropbox->curl_handle, CURLOPT_FOLLOWLOCATION, 1);
@@ -119,17 +174,14 @@ static ssize_t gfal2_dropbox_perform_v(DropboxHandle* dropbox,
             curl_easy_setopt(dropbox->curl_handle, CURLOPT_UPLOAD, 1);
             break;
         case M_POST:
-            curl_easy_setopt(dropbox->curl_handle, CURLOPT_UPLOAD, 0);
             curl_easy_setopt(dropbox->curl_handle, CURLOPT_POST, 1);
-            curl_easy_setopt(dropbox->curl_handle, CURLOPT_POSTFIELDSIZE, 0);
+            curl_easy_setopt(dropbox->curl_handle, CURLOPT_POSTFIELDSIZE, payload_size);
             break;
         case M_GET:
             curl_easy_setopt(dropbox->curl_handle, CURLOPT_UPLOAD, 0);
             break;
     }
-    char url_buffer[GFAL_URL_MAX_LEN];
-    gfal2_dropbox_concat_args(url, n_args, args, url_buffer, sizeof(url_buffer));
-    curl_easy_setopt(dropbox->curl_handle, CURLOPT_URL, url_buffer);
+    curl_easy_setopt(dropbox->curl_handle, CURLOPT_URL, url);
 
     // Payload
     FILE* payload_fd = NULL;
@@ -155,14 +207,32 @@ static ssize_t gfal2_dropbox_perform_v(DropboxHandle* dropbox,
         goto fail;
     }
 
-    long response;
-    curl_easy_getinfo(dropbox->curl_handle, CURLINFO_RESPONSE_CODE, &response);
-    if (gfal2_dropbox_map_http_status(response, error, __func__) < 0)
-        goto fail;
-
     double total_size;
     curl_easy_getinfo(dropbox->curl_handle, CURLINFO_SIZE_DOWNLOAD, &total_size);
     oauth_release(&oauth);
+
+    long response;
+    curl_easy_getinfo(dropbox->curl_handle, CURLINFO_RESPONSE_CODE, &response);
+    if (response / 100 != 2) {
+        switch (response) {
+            case 400:
+                gfal2_set_error(error, dropbox_domain(), EINVAL, __func__, "Dropbox plugin made an invalid request");
+                return -1;
+            case 401:
+                gfal2_set_error(error, dropbox_domain(), EACCES, __func__, "Token invalid, expired or revoked");
+                return -1;
+            case 409:
+                gfal2_dropbox_map_error(output, total_size, error);
+                return -1;
+            case 429:
+                gfal2_set_error(error, dropbox_domain(), EBUSY, __func__, "Too many request or write operations");
+                return -1;
+            default:
+                gfal2_set_error(error, dropbox_domain(), EIO, __func__, "Dropbox internal error");
+                return -1;
+        }
+    }
+
     return (ssize_t)(total_size);
 
 fail:
@@ -171,65 +241,56 @@ fail:
 }
 
 
-ssize_t gfal2_dropbox_get_range(DropboxHandle* dropbox,
-        const char* url, off_t offset, off_t size,
-        char* output, size_t output_size, GError** error,
-        size_t n_args, ...)
+ssize_t gfal2_dropbox_perform(DropboxHandle* dropbox,
+    Method method, const char* url,
+    off_t offset, off_t size,
+    char* output, size_t output_size,
+    const char *payload_mimetype,
+    const char* payload, size_t payload_size,
+    GError** error,
+    size_t headers_count, ...)
 {
     va_list args;
-    va_start(args, n_args);
-    GError* tmp_err = NULL;
-    ssize_t r = gfal2_dropbox_perform_v(dropbox, M_GET, url, offset, size,
-            output, output_size, NULL, 0, &tmp_err, n_args, args);
-    if (r < 0)
-        gfal2_propagate_prefixed_error(error, tmp_err, __func__);
+    va_start(args, headers_count);
+    ssize_t ret = gfal2_dropbox_perform_v(dropbox, method, url,
+        offset, size, output, output_size,
+        payload_mimetype, payload, payload_size,
+        headers_count, args,
+        error);
     va_end(args);
-    return r;
+    return ret;
 }
 
 
-ssize_t gfal2_dropbox_get(DropboxHandle* dropbox,
-        const char* url, char* output, size_t output_size, GError** error,
-        size_t n_args, ...)
+ssize_t gfal2_dropbox_post_json(DropboxHandle *dropbox,
+    const char *url, char *output, size_t output_size, GError **error,
+    size_t n_args, ...)
 {
     va_list args;
     va_start(args, n_args);
+    size_t i;
+    json_object *request = json_object_new_object();
+    for (i = 0; i < n_args; ++i) {
+        const char *key = va_arg(args, const char*);
+        const char *value = va_arg(args, const char*);
+        json_object *value_obj = json_object_new_string(value);
+        json_object_object_add(request, key, value_obj);
+    }
+    va_end(args);
+
+    const char *payload = json_object_to_json_string(request);
+
     GError* tmp_err = NULL;
-    ssize_t r = gfal2_dropbox_perform_v(dropbox, M_GET, url, 0, 0,
-            output, output_size, NULL, 0, &tmp_err, n_args, args);
-    if (r < 0)
+    ssize_t r = gfal2_dropbox_perform_v(dropbox,
+        M_POST, url,
+        0, 0,
+        output, output_size,
+        "application/json", payload, strlen(payload),
+        0, NULL,
+        &tmp_err);
+    json_object_put(request);
+    if (r < 0) {
         gfal2_propagate_prefixed_error(error, tmp_err, __func__);
-    va_end(args);
-    return r;
-}
-
-
-ssize_t gfal2_dropbox_post(DropboxHandle* dropbox,
-        const char* url, char* output, size_t output_size, GError** error,
-        size_t n_args, ...)
-{
-    va_list args;
-    va_start(args, n_args);
-    GError* tmp_err = NULL;
-    ssize_t r = gfal2_dropbox_perform_v(dropbox, M_POST, url, 0, 0, output,
-            output_size, NULL, 0, &tmp_err, n_args, args);
-    if (r < 0)
-        gfal2_propagate_prefixed_error(error, tmp_err, __func__);;
-    va_end(args);
-    return r;
-}
-
-
-ssize_t gfal2_dropbox_put(DropboxHandle* dropbox, const char* url,
-        const char* payload, size_t payload_size, char* output, size_t output_size,
-        GError** error, size_t n_args, ...)
-{
-    va_list args;
-    va_start(args, n_args);
-    GError* tmp_err = NULL;
-    ssize_t r = gfal2_dropbox_perform_v(dropbox, M_PUT, url, 0, 0, output, output_size, payload, payload_size, &tmp_err, n_args, args);
-    if (r < 0)
-        gfal2_propagate_prefixed_error(error, tmp_err, __func__);
-    va_end(args);
+    }
     return r;
 }
